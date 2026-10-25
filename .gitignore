@@ -1,0 +1,28 @@
+# Credentials and local configuration
+.env
+.env.*
+*.pem
+*.key
+credentials*.json
+service-account*.json
+
+# Python and tools
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local records and editor files
+*.log
+logs/
+local_data/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,4 @@
+# Direct runtime dependencies verified for this baseline.
+# Transitive dependency versions are resolved by pip.
+google-genai==2.33.0
+httpx==0.28.1
