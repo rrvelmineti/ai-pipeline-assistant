@@ -1,119 +1,128 @@
-# AI Pipeline Assistant
+# Orders Pipeline Assistant
 
-A Python learning project that validates a small calorie calculation pipeline,
-records what happened, and asks Gemini to explain an error using that record.
+Understand a failed orders export, inspect the evidence, and know what to check next.
+A runnable first version of an applied AI engineering learning project. Python
+validates and calculates; optional Gemini classifies a known failure under strict
+checks. Neither the model nor the application guesses missing values or repairs data.
 
-This is the v0.1.0 baseline. The application detects predefined input problems
-and explains them. It does not automatically repair data or code, monitor
-production pipelines, or discover unknown root causes.
+## Start the browser demo (Python 3.10–3.12)
 
-## What works now
-
-| Component | Current behavior |
-| --- | --- |
-| `calorie_pipeline.py` | Validates inputs, calculates calories, and returns an evidence record. |
-| `explain_calorie_error.py` | Sends the missing-nutrition example to Gemini and prints an explanation. |
-| `check_response.py` | Parses a fixed sample JSON response; it does not call Gemini. |
-| `tests/` | Checks calculations, invalid inputs, model-response handling, and key-input safeguards without live API calls. |
-| `.github/workflows/ci.yml` | Defines automated tests for pushes and pull requests. It runs after upload to GitHub if Actions is enabled. |
-
-The first two scripts are preserved from the working lessons. The JSON exercise
-is copied from the completed lesson and includes a short explanatory docstring.
-Repository documentation, tests, and CI configuration are new in this package.
-
-## Run on Windows PowerShell
-
-Install Python 3.10 or newer. Open PowerShell in this project folder.
-Create a local environment; using its Python executable directly avoids needing
-to change PowerShell's execution policy.
+From the repository root in PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe calorie_pipeline.py
-.\.venv\Scripts\python.exe check_response.py
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-On macOS or Linux, use `.venv/bin/python` instead of
-`.\.venv\Scripts\python.exe` after creating the environment with `python3`.
+Open the local URL printed in the terminal. Choose the successful or broken demo,
+then **Run pipeline**. You can also upload a synthetic CSV and download its JSON
+report. No API key is needed. Linux/macOS: use `.venv/bin/python` instead.
+The interface supports native light/dark themes. It clears old results when input changes.
 
-The calculation and JSON exercises use only Python's standard library and can
-also run before installing the Gemini dependencies.
+## Command-line workflow (no external packages needed)
 
-### Expected calculation results
-
-All values are synthetic test inputs, not measured food nutrition.
-
-| Input | Expected result |
-| --- | --- |
-| 250 g, 200 calories per 100 g | 500 calories |
-| 250 g, nutrition unavailable | Error at validation; total remains `null` |
-| 500 g, 200 calories per 100 g | 1,000 calories |
-
-The formula is `portion_grams / 100 * calories_per_100g`. A missing value stays
-missing; zero is accepted as a real numeric input.
-
-## Run the Gemini explanation
+From the repository root:
 
 ```powershell
-.\.venv\Scripts\python.exe explain_calorie_error.py
+python -m orders_assistant run examples/orders/Orders.csv
+python -m orders_assistant explain
+python -m orders_assistant history
 ```
 
-The existing lesson asks you to check the Google AI Studio project associated
-with your key and type `FREE` if the project is marked Free. The script cannot
-verify billing or available quota. Availability and limits depend on the project
-and may change; check [Google's current pricing](https://ai.google.dev/gemini-api/docs/pricing).
+Expected sales: `250.00`. Run the broken fixture to inspect a failure:
 
-It reads `GEMINI_API_KEY` from the terminal environment if present. Otherwise,
-it asks for the key through hidden terminal input and does not save it. Paste
-once and press Enter; no characters or dots appear. Never put the key in a
-Python file, commit, screenshot, issue, or pull request. This project does not
-automatically load `.env` files.
+```powershell
+python -m orders_assistant run examples/orders/invalid_quantity.csv
+python -m orders_assistant explain
+```
 
-The configured model is `gemini-3.5-flash-lite`. The script attempts one
-generation request and sends only the synthetic evidence record and explanatory
-instructions. It does not modify the original record. Review each model answer
-against the evidence: a completed response is not proof of factual accuracy.
+The run exits with code 1 for a recorded input failure, 0 for success, and 2 for
+configuration/storage problems. `explain` reads the saved record; it never reruns
+the CSV. Run again after correcting your input.
 
-The author previously reported a successful Gemini run. Automated tests in this
-repository use simulated responses; they do not establish current API access,
-quota, billing status, or model-answer accuracy.
+CLI outputs: `local_data/latest.json` and SQLite history in
+`local_data/runs.sqlite3`, both ignored by Git. Use `--output` and `--database` to
+choose other paths. The history is committed before replacing the latest snapshot;
+if snapshot saving fails, the command exits 2 and the historical record remains.
+A snapshot is replaced atomically. Keep one CLI writer per output path.
 
-## How to develop from here
+## CSV contract
 
-Use GitHub as the shared source of truth. Clone once, pull the latest `main`,
-create a feature branch, make and test a focused change, push the branch, open a
-pull request, review it, and merge after checks pass.
+```csv
+quantity,unit_price
+2,30
+3,30
+4,25
+```
 
-See [the working guide](docs/git-workflow.md) for PowerShell commands, repository
-settings, and the difference between pushing code and deploying an application.
-See [the roadmap](docs/roadmap.md) for the next feature and its acceptance checks.
+- UTF-8 (optional BOM), exactly these two headers in either order.
+- Quantity: integer from 1 to 1,000,000. Price: 0 to 1,000,000, at most 2 decimal places.
+- Whitespace around numeric cells is accepted. Currency symbols, exponent notation,
+  negative values, missing fields, duplicate headers, and malformed CSV are rejected.
+- Maximum 2 MB and 10,000 orders. Physical CSV line numbers include the header.
+- Exact decimal arithmetic; totals are JSON strings such as `"250.00"`.
+- All values must use one currency. No tax, discount, currency conversion, or refunds.
+- Stop at the first error; failed totals remain `null`, even after earlier valid rows.
 
-CI covers Linux with Python 3.10 and 3.12, plus Windows with Python 3.12. No Gemini
-key is required in GitHub Actions. Direct dependency versions are pinned in
-`requirements.txt`; a full transitive lockfile is not yet maintained.
+## Optional Gemini
 
-## Project files
+Configure `GEMINI_API_KEY` and `GEMINI_MODEL` in your environment using your own
+currently available model ID. Do not commit keys. The application does not load
+`.env` automatically. No key is needed for normal operation or CI.
 
-| Location | Purpose |
+```powershell
+python -m orders_assistant explain --provider gemini
+```
+
+In the UI, explicitly allow the request and click the Gemini button. Only the
+static error description and stage are sent, never uploaded cells or file paths.
+The returned code, stage and null underlying cause must match recorded evidence.
+Unsupported claims, malformed responses, network errors, and incomplete responses
+are rejected; the original record remains unchanged. Wording is rendered from
+trusted templates. This is constrained classification, not a general root-cause
+agent. An upstream cause cannot be established from a bad cell alone.
+
+Gemini may require quota/billing. Live requests are optional and have **not** been
+verified with a real key in this implementation. API references:
+[authentication](https://ai.google.dev/api) and
+[generateContent](https://ai.google.dev/api/generate-content).
+
+## Tests
+
+```powershell
+python -m pip install -r requirements.txt
+python -m compileall -q orders_assistant app.py examples/orders tests
+python -m unittest discover -s tests -v
+```
+
+Tests cover money arithmetic, invalid inputs, file/row limits, error evidence,
+CLI exit codes, history, snapshot replacement, Gemini response rejection/redaction,
+timeouts, and the UI demo flow. All AI responses are mocked. GitHub Actions runs
+on Linux (Python 3.10/3.12) and Windows (3.12).
+
+## Files and learning route
+
+| File | Responsibility |
 | --- | --- |
-| `requirements.txt` | Runtime dependencies |
-| `tests/test_pipeline.py` | Calculation and input-validation regression tests |
-| `tests/test_explanation.py` | Offline Gemini response and CLI tests |
-| `tests/test_json_exercise.py` | JSON exercise output check |
-| `docs/git-workflow.md` | Everyday Git workflow and repository setup |
-| `docs/roadmap.md` | Planned features and limits |
-| `CONTRIBUTING.md` | Change and review expectations |
-| `CHANGELOG.md` | Version notes |
-| `.github/pull_request_template.md` | Review prompts |
+| `orders_assistant/core.py` | CSV validation and evidence |
+| `orders_assistant/storage.py` | JSON snapshot and SQLite history |
+| `orders_assistant/explain.py` | Deterministic explanation and optional Gemini verification |
+| `orders_assistant/__main__.py` | CLI commands and exit codes |
+| `app.py` | Browser demo |
+| `examples/orders/` | Original beginner exercise and synthetic fixtures |
+| `tests/` | Offline regression checks |
 
-## References
+Start with [the learning guide](docs/learning.md), then [architecture](docs/architecture.md).
+The original beginner exercise stays separate and intentionally simpler; the new
+application uses the package above. [Git workflow](docs/git-workflow.md).
 
-- [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow)
-- [Building and testing Python](https://docs.github.com/en/actions/tutorials/build-and-test-code/python)
-- [Protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
-- [Gemini model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)
-- [Gemini API reference](https://ai.google.dev/api/generate-content)
+## Boundaries
 
-No open-source license has been selected for this baseline.
+This is a local learning/demo application, not a production deployment. The UI
+keeps results in session memory, not in the CLI database. Temporary upload copies
+are removed after analysis. Closing a session can discard its result. CLI evidence
+is retained until you remove your own `local_data` files. No customer profiles or
+raw order cells are stored in evidence. Do not upload sensitive business data to
+a shared demo. Public hosting, authentication, monitoring, automatic repairs,
+and arbitrary pipeline integrations are outside this first version.

@@ -1,4 +1,2 @@
-# Direct runtime dependencies verified for this baseline.
-# Transitive dependency versions are resolved by pip.
-google-genai==2.33.0
-httpx==0.28.1
+# Only the browser interface needs a third-party package.
+streamlit==1.50.0
