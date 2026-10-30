@@ -1,12 +1,10 @@
 # Changelog
 
-## 0.1.0 baseline — 2026-10-24
+## 1.0.0 — Orders assistant
 
-- Collected the existing calorie pipeline and Gemini explanation scripts.
-- Included the completed standalone JSON parsing exercise.
-- Added offline regression tests and a GitHub Actions workflow definition.
-- Documented setup, the branch and pull request workflow, current limitations,
-  and the next structured-output feature.
-
-This entry describes the prepared baseline. A GitHub release and tag are
-separate actions, made after the initial commit and passing checks.
+- Replace the earlier domain-specific foundation with an orders-focused application.
+- Add CSV contract validation, decimal totals and structured run records.
+- Add JSON snapshots, SQLite history, CLI, and a local Streamlit browser demo.
+- Add optional evidence-checked Gemini classification with redacted requests.
+- Add offline tests and update Linux/Windows CI and learning documentation.
+- Preserve the original beginner orders exercise separately.
