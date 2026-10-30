@@ -1,5 +1,6 @@
 """Local audit history and atomic latest-result snapshots."""
 import json
+from contextlib import closing
 import os
 import sqlite3
 import tempfile
@@ -24,7 +25,7 @@ def save_json(record, path):
 
 def save_run(record, database):
     Path(database).parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(database) as db:
+    with closing(sqlite3.connect(database)) as db, db:
         db.execute("CREATE TABLE IF NOT EXISTS runs (run_id TEXT PRIMARY KEY, created_at TEXT NOT NULL, record TEXT NOT NULL)")
         db.execute("INSERT INTO runs VALUES (?, ?, ?)",
                    (record["run_id"], record["created_at"], json.dumps(record, allow_nan=False)))
@@ -33,6 +34,6 @@ def save_run(record, database):
 def history(database, limit=20):
     if not Path(database).is_file():
         return []
-    with sqlite3.connect(database) as db:
+    with closing(sqlite3.connect(database)) as db, db:
         rows = db.execute("SELECT record FROM runs ORDER BY created_at DESC LIMIT ?", (limit,))
         return [json.loads(row[0]) for row in rows]

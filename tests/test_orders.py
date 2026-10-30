@@ -136,3 +136,16 @@ class OrdersTests(unittest.TestCase):
                 gemini_explain(r, fail)
         self.assertIn("429", str(caught.exception))
         self.assertNotIn("SECRET", str(caught.exception))
+
+    def test_database_connections_are_closed(self):
+        from unittest.mock import MagicMock
+        connection = MagicMock()
+        connection.execute.return_value = []
+        record = self.run_csv("quantity,unit_price\n2,30")
+        db = self.folder / "close-test.db"
+        db.touch()
+        with patch("orders_assistant.storage.sqlite3.connect", return_value=connection):
+            save_run(record, db)
+            self.assertEqual(connection.close.call_count, 1)
+            history(db)
+            self.assertEqual(connection.close.call_count, 2)
