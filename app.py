@@ -48,7 +48,7 @@ if record:
         if st.button("Verify classification with Gemini", disabled=not st.session_state.allow_ai):
             try:
                 with st.spinner("Checking the evidence…"):
-                    st.session_state.ai = gemini_explain(record)
+                    st.session_state.ai = gemini_explain(record, secrets=st.secrets)
             except ExplanationError as exc:
                 st.warning(str(exc))
         if st.session_state.get("ai"):

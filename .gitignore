@@ -26,3 +26,6 @@ local_data/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Streamlit credentials must remain local
+.streamlit/secrets.toml

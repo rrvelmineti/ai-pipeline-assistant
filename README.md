@@ -67,13 +67,21 @@ quantity,unit_price
 
 ## Optional Gemini
 
-Configure `GEMINI_API_KEY` and `GEMINI_MODEL` in your environment using your own
+Configure `GEMINI_API_KEY` and `GEMINI_MODEL` in your environment for the CLI using your own
 currently available model ID. Do not commit keys. The application does not load
 `.env` automatically. No key is needed for normal operation or CI.
 
 ```powershell
 python -m orders_assistant explain --provider gemini
 ```
+
+For the browser app, add `GEMINI_API_KEY` and `GEMINI_MODEL` as quoted,
+top-level entries in Streamlit Settings > Secrets, outside any `[section]`.
+The UI reads `st.secrets` directly, with environment variables as a fallback.
+Leading/trailing whitespace is trimmed, and model IDs with or without the
+`models/` prefix are accepted. Use the exact API model ID from AI Studio's
+Get code; display names with spaces are not valid model IDs. Save and reboot
+after changing secrets. Never commit `.streamlit/secrets.toml`.
 
 In the UI, explicitly allow the request and click the Gemini button. Only the
 static error description and stage are sent, never uploaded cells or file paths.

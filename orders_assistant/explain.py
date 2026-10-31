@@ -30,13 +30,40 @@ def explain(record):
             "underlying_cause": None, "next_check": check}
 
 
-def gemini_explain(record, opener=None):
+def gemini_settings(secrets=None):
+    """Read explicit Streamlit secrets first, then environment settings for the CLI."""
+    values = {}
+    for name in ("GEMINI_API_KEY", "GEMINI_MODEL"):
+        try:
+            value = secrets.get(name) if secrets is not None else None
+        except (FileNotFoundError, KeyError):
+            value = None
+        if value is None:
+            value = os.environ.get(name)
+        if value is not None and not isinstance(value, str):
+            raise ExplanationError(f"{name} must be text inside quotation marks.")
+        values[name] = value.strip() if value else ""
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise ExplanationError(
+            "Missing " + " and ".join(missing) +
+            ". Save these as top-level entries in Streamlit Settings > Secrets "
+            "(outside any [section]), then reboot the app. For the CLI, set environment variables.")
+    model = values["GEMINI_MODEL"].removeprefix("models/")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", model):
+        raise ExplanationError(
+            "GEMINI_MODEL must be the API model ID from AI Studio's Get code, "
+            "not a display name with spaces. An optional models/ prefix is accepted.")
+    if any(ord(char) < 32 or ord(char) == 127 for char in values["GEMINI_API_KEY"]):
+        raise ExplanationError("GEMINI_API_KEY contains an invalid control character. Paste the key again.")
+    return values["GEMINI_API_KEY"], model
+
+
+def gemini_explain(record, opener=None, *, secrets=None):
     baseline = explain(record)
     if record["status"] == "success":
         return baseline
-    key, model = os.environ.get("GEMINI_API_KEY"), os.environ.get("GEMINI_MODEL")
-    if not key or not model or not re.fullmatch(r"[A-Za-z0-9._-]+", model):
-        raise ExplanationError("Set GEMINI_API_KEY and a valid GEMINI_MODEL in your environment.")
+    key, model = gemini_settings(secrets)
     # Never send CSV cells, source paths, or the full record to the model.
     evidence = {"stage": baseline["stage"], "problem": baseline["problem"]}
     prompt = ("Classify this validated orders-pipeline evidence. Return only a JSON object with "
@@ -63,7 +90,14 @@ def gemini_explain(record, opener=None):
         if result != expected:
             raise ValueError("Unsupported model claim")
     except urllib.error.HTTPError as exc:
-        raise ExplanationError(f"Gemini returned HTTP {exc.code}. Check model access, quota, and credentials.") from None
+        guidance = {
+            400: "Google rejected the request. Verify the model supports generateContent and JSON output.",
+            401: "Google rejected authentication. Check your API key in Streamlit Secrets.",
+            403: "Google denied access. Check your key's API restrictions and project permissions.",
+            404: "The configured model was not found for this API request. Check the exact model ID and availability for your project.",
+            429: "Google's quota or rate limit was reached. Check project limits before retrying.",
+        }.get(exc.code, "Check model access, quota, and credentials.")
+        raise ExplanationError(f"Gemini returned HTTP {exc.code}. {guidance}") from None
     except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError):
         raise ExplanationError("Gemini was unavailable or its response did not match the evidence.") from None
     # Render only trusted wording; a model cannot introduce a made-up cause or repair.
