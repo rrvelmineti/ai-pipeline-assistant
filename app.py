@@ -12,8 +12,8 @@ st.write("Orders Pipeline Assistant · CSV checks with evidence you can inspect.
 st.caption("Use synthetic data for this demo. Uploads are processed on the app server. Results stay in this browser session; download them to keep a copy.")
 choice = st.radio("Choose input", ["Successful demo", "Broken quantity demo", "Upload CSV"], horizontal=True)
 upload = st.file_uploader("Orders CSV · up to 2 MB", type=["csv"]) if choice == "Upload CSV" else None
-raw = (b"quantity,unit_price\n2,30\n3,30\n4,25\n" if choice == "Successful demo"
-       else b"quantity,unit_price\n2,30\nthree,30\n4,25\n")
+sample = "Orders.csv" if choice == "Successful demo" else "invalid_quantity.csv"
+raw = (Path(__file__).resolve().parent / "examples" / "orders" / sample).read_bytes()
 if choice == "Upload CSV":
     raw = upload.getvalue() if upload is not None else None
 # Changing inputs must not leave results from another file visible.
@@ -59,3 +59,5 @@ if record:
                        file_name=f"run-{record['run_id']}.json", mime="application/json")
 st.divider()
 st.caption("No automatic repairs. Offline checks are deterministic; optional AI classification is checked against the evidence.")
+
+st.page_link("pages/2_Investigate.py", label="Open the v2 investigation workspace")
