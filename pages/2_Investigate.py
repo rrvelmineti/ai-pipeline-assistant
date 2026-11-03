@@ -9,13 +9,14 @@ from pathlib import Path
 
 import streamlit as st
 
+from orders_assistant.query_desk import header, location, questions
 from orders_assistant.core import MAX_BYTES
 from orders_assistant.explain import gemini_settings
 from orders_assistant.investigate import Index, OUTPUT_TOKENS, corpus, evidence, investigate, keyword_search
 from orders_assistant.pipeline_v2 import PROFILES, process, reader_for
 
 ROOT = Path(__file__).resolve().parents[1]
-st.title("Pipeline investigation")
+header("INVESTIGATION / GUIDED REVIEW")
 st.caption("Use synthetic CSVs. This session has its own database and run history.")
 if "v2_dir" not in st.session_state:
     st.session_state.v2_dir = tempfile.TemporaryDirectory()
@@ -41,15 +42,16 @@ try:
     headers = next(reader_for(raw), [])
 except (UnicodeError, csv.Error):
     headers = []
-st.write("Source columns", headers)
-mapping = {}
-for name, rule in PROFILES[profile].items():
-    choices = [None, *dict.fromkeys(headers)]
-    selected = st.selectbox(f"{name} ({rule.kind}, {'required' if rule.required else 'optional'})",
-                            choices, index=choices.index(name) if name in choices else 0,
-                            format_func=lambda x: "Unmapped" if x is None else x)
-    if selected is not None:
-        mapping[name] = selected
+with st.expander("Review column mapping", expanded=choice == "Upload CSV"):
+    st.write("Source columns", headers)
+    mapping = {}
+    for name, rule in PROFILES[profile].items():
+        choices = [None, *dict.fromkeys(headers)]
+        selected = st.selectbox(f"{name} ({rule.kind}, {'required' if rule.required else 'optional'})",
+                                choices, index=choices.index(name) if name in choices else 0,
+                                format_func=lambda x: "Unmapped" if x is None else x)
+        if selected is not None:
+            mapping[name] = selected
 limits = {}
 with st.expander("Numeric validation ranges"):
     for field, rule in PROFILES[profile].items():
@@ -70,14 +72,38 @@ if st.button("Confirm mapping and run pipeline", type="primary"):
 run = st.session_state.get("v2_run")
 if not run:
     st.stop()
-st.subheader("Recorded evidence")
-st.json(run.model_dump(), expanded=False)
 if run.code == "ok":
     st.success(f"{run.rows_validated} rows validated.")
     if run.total_cents is not None:
         st.metric("Committed batch total", f"{run.total_cents // 100}.{run.total_cents % 100:02d}")
+    outcome = ("Inventory was validated only; no orders were stored." if profile == "inventory" else
+               "This batch was already loaded; no duplicate orders were added." if run.already_loaded else
+               "The orders batch was committed to this session’s database.")
+    questions([("What did this run validate?", f"{run.rows_validated} rows passed the {profile} profile."),
+               ("What was stored?", outcome),
+               ("What should I check next?", "Compare the validated count with the source export.")])
 else:
-    st.warning(f"{run.stage} failed: {run.code} · line {run.row or 'unknown'} · field {run.field or 'unknown'}")
+    docs = {d.metadata["section"]: d for d in corpus() if d.metadata["code"] == run.code}
+    st.warning(f"Stopped during {run.stage} · {run.code}")
+    problem = {
+        "invalid_number": "A numeric field did not meet its format or range rule.",
+        "invalid_date": "A date did not meet the ISO date rule.",
+        "duplicate": "A field that must be unique contained a repeated value.",
+        "missing_value": "A required value was missing.",
+        "invalid_mapping": "The headers, selected columns, or configured limits did not meet the profile rules.",
+        "invalid_csv": "The input could not be parsed as the expected UTF-8 CSV.",
+        "database_failure": "The database operation failed.",
+        "empty_file": "No data rows were available to validate.",
+        "input_limit": "The input exceeded a configured file or row limit.",
+    }.get(run.code, "The run did not complete.")
+    # A parser failure may retain the last processed position rather than the failing line.
+    where = (location(None, None) if run.code == "invalid_csv" else location(run.row, run.field))
+    check = docs.get("Next check")
+    questions([("Why did this run stop?", problem), ("Which row failed?", where),
+               ("What should I check next?", check.page_content if check else "Inspect the source export.")])
+with st.expander("Inspect the recorded evidence"):
+    st.json(run.model_dump(), expanded=False)
+st.subheader("Investigate further")
 question = st.selectbox("Investigation question", ["What should I check next?",
     "How many orders are stored in this session?", "Has this failure happened before in this session?"])
 mode = st.radio("Investigation mode", ["Evidence only", "RAG", "Agent with read-only tools"])

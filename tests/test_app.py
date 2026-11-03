@@ -12,6 +12,10 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(app.metric), 0)
         app.button[0].click().run()
         self.assertTrue(app.error)
+        answers = {item.label: item for item in app.expander}
+        self.assertIn("quantity", answers["Which row failed?"].markdown[0].value)
+        self.assertIn("line 3", answers["Which row failed?"].markdown[0].value)
+        self.assertNotIn("How was the total calculated?", answers)
         self.assertFalse(app.exception)
         self.assertTrue(app.button[1].disabled)
 
