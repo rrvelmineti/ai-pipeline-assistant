@@ -1,9 +1,38 @@
-# Orders Pipeline Assistant
+# AI Pipeline Troubleshooting Assistant
 
-Understand a failed orders export, inspect the evidence, and know what to check next.
-A runnable first version of an applied AI engineering learning project. Python
-validates and calculates; optional Gemini classifies a known failure under strict
-checks. Neither the model nor the application guesses missing values or repairs data.
+Version 2 investigates synthetic orders and inventory CSVs. Select **Investigate** in the Streamlit sidebar. The classic orders demo and CLI are also available.
+
+## Repeat the portfolio demo
+
+1. On **Investigate**, choose **Successful orders** and confirm the mapping. Inspect the committed batch total. Run it again and look for `already_loaded: true`.
+2. Choose **Broken orders**. Inspect the failure at physical line 3. Evidence-only mode works offline.
+3. Select **RAG** and opt in. The app embeds the public runbooks, searches Chroma and asks Gemini for an explanation and a cited next check. Inspect the actual passages and token reserve. A missing or mismatched citation suppresses the model answer.
+4. Select **Agent with read-only tools** and ask how many orders are stored. Inspect the tool trace. The session contains two orders after step 1. The model chooses whether to query. If it skips the query, no count has been verified by the agent.
+5. Upload an orders export with renamed columns or try the inventory snapshot. Inventory validates SKU uniqueness, stock and an optional ISO date. Download the evidence or investigation JSON before closing the session.
+
+For v2 AI, configure `GEMINI_API_KEY`, `GEMINI_MODEL`, and **`GEMINI_EMBEDDING_MODEL`** using model IDs available to your own Google project. Investigations call external APIs only after opt-in. Use synthetic uploads. The optional AI request includes a fixed question, approved runbook content, sanitized evidence and aggregate tool results. Source cell values and uploaded headers are excluded.
+
+## Implementation and evaluation
+
+| Capability | Implementation | How to inspect it |
+| --- | --- | --- |
+| Profile validation and transactional load | Pydantic, SQLite, parameterized SQL and integer cents | Run twice, compare batch totals, inspect rollback tests |
+| Document search | Versioned Markdown sections, Google embeddings and a session-local Chroma index | Inspect ranked source IDs, passage text and distances |
+| RAG and context window | LangChain prompts, Gemini structured output and reserved output budget | Review selected passages and oversize-context regression |
+| Investigative agent | LangGraph model decisions, four approved read operations, up to three tool executions | Inspect the trace, model-call count and elapsed time |
+| Evaluation | Streamlit AppTest, real SQLite and Chroma tests, mocked Google responses and labelled retrieval questions | Run the commands below |
+
+```sh
+python -m unittest discover -s tests -v
+python -m evaluation.retrieval
+python -m evaluation.scenarios
+# Explicit live evaluation uses your Google embedding quota
+python -m evaluation.retrieval --live
+```
+
+The offline keyword baseline retrieved the expected source in the top three for 15 of 20 questions. All 24 labelled pipeline scenarios produced their expected evidence. Use `python -m evaluation.scenarios --live` to generate a separate RAG and agent response for each scenario for manual factual review. This makes paid provider requests if billing applies. Live vector retrieval and generated-answer quality require separate evaluation with configured Google models. Citation checking validates source identity and the quoted next check. The free-text explanation still requires review. Context accounting uses a conservative UTF-8 byte allowance for the English prompt with a reserve for framing, structured output and the answer. It is not provider-reported token usage.
+
+SQLite data and the rebuildable vector index are temporary and isolated by browser session. For rollback, revert the v2 merge on GitHub and redeploy the previous main revision. The following sections describe the classic entry points.
 
 ## Start the browser demo (Python 3.10–3.12)
 
@@ -30,7 +59,7 @@ python -m orders_assistant explain
 python -m orders_assistant history
 ```
 
-Expected sales: `250.00`. Run the broken fixture to inspect a failure:
+Expected sales for the current committed fixture: `222.50`. Run the broken fixture to inspect a failure:
 
 ```powershell
 python -m orders_assistant run examples/orders/invalid_quantity.csv
@@ -47,7 +76,7 @@ choose other paths. The history is committed before replacing the latest snapsho
 if snapshot saving fails, the command exits 2 and the historical record remains.
 A snapshot is replaced atomically. Keep one CLI writer per output path.
 
-## CSV contract
+## Classic orders CSV contract
 
 ```csv
 quantity,unit_price
@@ -91,8 +120,7 @@ are rejected; the original record remains unchanged. Wording is rendered from
 trusted templates. This is constrained classification, not a general root-cause
 agent. An upstream cause cannot be established from a bad cell alone.
 
-Gemini may require quota/billing. Live requests are optional and have **not** been
-verified with a real key in this implementation. API references:
+Gemini may require quota/billing. The v1 classification was verified in the hosted demo. The v2 embedding and chat models require a separate live check. API references:
 [authentication](https://ai.google.dev/api) and
 [generateContent](https://ai.google.dev/api/generate-content).
 

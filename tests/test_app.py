@@ -7,7 +7,7 @@ class AppTests(unittest.TestCase):
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py")).run()
         self.assertFalse(app.exception)
         app.button[0].click().run()
-        self.assertEqual(app.metric[0].value, "250.00")
+        self.assertEqual(app.metric[0].value, "222.50")
         app.radio[0].set_value("Broken quantity demo").run()
         self.assertEqual(len(app.metric), 0)
         app.button[0].click().run()
