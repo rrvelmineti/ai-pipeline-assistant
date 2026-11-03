@@ -1,6 +1,6 @@
 # AI Pipeline Troubleshooting Assistant
 
-Version 2 investigates synthetic orders and inventory CSVs. Select **Investigate** in the Streamlit sidebar. The classic orders demo and CLI are also available.
+Query Desk opens with a quick orders check. Run a demo or upload a synthetic CSV, then expand a suggested question to see the result, its location, or the next check. These answers come from the current run and work without an API key. Version 2 investigates synthetic orders and inventory CSVs. Select **Investigate** in the Streamlit sidebar. The classic orders demo and CLI are also available.
 
 ## Repeat the portfolio demo
 

@@ -98,6 +98,9 @@ class V2Tests(unittest.TestCase):
         app.button[0].click().run()
         self.assertFalse(app.exception)
         self.assertIn("invalid_number", app.warning[0].value)
+        cards = {item.label: item for item in app.expander}
+        self.assertIn("line 3", cards["Which row failed?"].markdown[0].value)
+        self.assertIn("profile range", cards["What should I check next?"].markdown[0].value)
         app.selectbox[0].select("Successful orders").run()
         app.button[0].click().run()
         self.assertFalse(app.exception)

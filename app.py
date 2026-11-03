@@ -3,13 +3,13 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import streamlit as st
+from orders_assistant.query_desk import header, location, questions
 from orders_assistant.core import analyze, MAX_BYTES
 from orders_assistant.explain import explain, gemini_explain, ExplanationError
 
-st.set_page_config(page_title="Orders Pipeline Assistant", page_icon="📋", layout="centered")
-st.title("Understand the failure. Know the next step.")
-st.write("Orders Pipeline Assistant · CSV checks with evidence you can inspect.")
-st.caption("Use synthetic data for this demo. Uploads are processed on the app server. Results stay in this browser session; download them to keep a copy.")
+st.set_page_config(page_title="Query Desk · Pipeline Assistant", layout="centered")
+header("ORDERS / QUICK CHECK")
+st.caption("Use synthetic data. Files are processed on the server; download your report before leaving this session.")
 choice = st.radio("Choose input", ["Successful demo", "Broken quantity demo", "Upload CSV"], horizontal=True)
 upload = st.file_uploader("Orders CSV · up to 2 MB", type=["csv"]) if choice == "Upload CSV" else None
 sample = "Orders.csv" if choice == "Successful demo" else "invalid_quantity.csv"
@@ -38,12 +38,20 @@ if record:
         left, right = st.columns(2)
         left.metric("Total sales · currency units", record["total_sales"])
         right.metric("Orders validated", record["rows_processed"])
+        questions([
+            ("What did this run validate?", f"All {record['rows_processed']} orders passed the quantity and unit price checks."),
+            ("How was the total calculated?", "Each quantity was multiplied by its unit price, then the order totals were added."),
+            ("What should I check next?", "Compare the validated count and total with your source export."),
+        ])
     else:
         detail = explain(record)
-        st.error(detail["problem"])
-        st.write(f"Stage: {detail['stage']} · CSV line: {detail['row'] or 'not applicable'}")
-        st.info(detail["next_check"])
-        st.caption("The upstream reason is unknown. Correct the source after checking it, then rerun.")
+        st.error("Pipeline stopped during " + detail["stage"] + ".")
+        questions([
+            ("Why did this run stop?", detail["problem"]),
+            ("Which row failed?", location(detail["row"], detail["field"])),
+            ("What should I check next?", detail["next_check"]),
+        ])
+        st.caption("The upstream cause is unknown. Gemini verification is optional.")
         st.checkbox("Allow sending the generic error category to Google Gemini", key="allow_ai")
         if st.button("Verify classification with Gemini", disabled=not st.session_state.allow_ai):
             try:
@@ -60,4 +68,4 @@ if record:
 st.divider()
 st.caption("No automatic repairs. Offline checks are deterministic; optional AI classification is checked against the evidence.")
 
-st.page_link("pages/2_Investigate.py", label="Open the v2 investigation workspace")
+st.markdown("[Open the investigation workspace →](./Investigate) · Column mapping, inventory, and AI tools")
