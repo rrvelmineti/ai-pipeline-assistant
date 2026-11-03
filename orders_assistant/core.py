@@ -14,7 +14,7 @@ RULES = {
     "input_unreadable": ("The input file could not be read.", "Check the path and file permissions."),
     "input_too_large": ("The CSV exceeds the 2 MB limit.", "Split the export into smaller files."),
     "invalid_csv": ("The input is not a valid UTF-8 CSV.", "Export the source again as UTF-8 CSV."),
-    "invalid_headers": ("The headers must be quantity,unit_price, each exactly once.", "Compare the header with the sample CSV."),
+    "invalid_headers": ("The headers must be quantity,unit_price, each exactly once.", "Check that the header contains quantity and unit_price exactly once each."),
     "empty_orders": ("The CSV contains no orders.", "Add at least one order from the source system."),
     "too_many_rows": ("The CSV exceeds 10,000 orders.", "Split the export into smaller files."),
     "invalid_row": ("The row must contain exactly two fields.", "Check commas and missing fields in this row."),

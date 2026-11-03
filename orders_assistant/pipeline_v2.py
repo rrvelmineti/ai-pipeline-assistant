@@ -32,6 +32,34 @@ PROFILES = {
 }
 
 
+class Finding(BaseModel):
+    line: int
+    column: str | None
+    entered: str | None
+    expected: str
+    code: str
+
+
+class ScanReport(BaseModel):
+    """Current upload only. Keep raw cell values separate from run history and AI evidence."""
+    rows_scanned: int = 0
+    complete: bool = False
+    unchecked_columns: list[str] = Field(default_factory=list)
+    findings: list[Finding] = Field(default_factory=list)
+
+
+def expectation(rule, code):
+    if code == "duplicate":
+        return "A unique value in this column"
+    if rule.kind == "integer":
+        return f"A whole number from {rule.minimum} to {rule.maximum}"
+    if rule.kind == "decimal":
+        return f"A number from {rule.minimum} to {rule.maximum} with at most two decimal places"
+    if rule.kind == "date":
+        return "A valid calendar date in YYYY-MM-DD format"
+    return "A nonblank text value"
+
+
 class Run(BaseModel):
     schema_version: Literal[2] = 2
     run_id: str = Field(default_factory=lambda: str(uuid4()))
@@ -96,9 +124,10 @@ def load_orders(db, batch, rows):
         return bool(existing), total
 
 
-def process(raw, profile, mapping, db, *, limits=None):
+def process(raw, profile, mapping, db, *, limits=None, report=None):
     digest = hashlib.sha256(raw).hexdigest()
     run = Run(profile=profile, source_sha256=digest)
+    report = ScanReport() if report is None else report
     rules = dict(PROFILES[profile])
     try:
         if len(raw) > MAX_BYTES:
@@ -118,28 +147,51 @@ def process(raw, profile, mapping, db, *, limits=None):
             raise Invalid("invalid_mapping")
         indexes = {field: headers.index(name) for field, name in mapping.items()}
         seen = {field: set() for field, rule in rules.items() if rule.unique}
+        report.unchecked_columns = [name for name in headers if name not in selected]
         rows = []
-        for values in reader:
-            run.row = reader.line_num
-            if run.rows_validated >= MAX_ROWS:
+        first_field = None
+        while True:
+            line = reader.line_num + 1
+            try:
+                values = next(reader)
+            except StopIteration:
+                report.complete = True
+                break
+            except csv.Error:
+                run.row, run.field = line, None
+                raise
+            if report.rows_scanned >= MAX_ROWS:
+                run.row, run.field = line, None
                 raise Invalid("input_limit")
+            report.rows_scanned += 1
+            prior_count = len(report.findings)
             if len(values) != len(headers):
-                raise Invalid("invalid_csv")
+                report.findings.append(Finding(line=line, column=None, entered=str(len(values)),
+                                               expected=f"{len(headers)} cells to match the header", code="invalid_csv"))
             parsed = {}
             for field, index in indexes.items():
-                run.field = field
-                value = convert(values[index], rules[field])
-                if field in seen and value is not None:
-                    if value in seen[field]:
-                        raise Invalid("duplicate")
-                    seen[field].add(value)
-                parsed[field] = value
-            rows.append(parsed)
-            run.field = None
-            run.rows_validated += 1
+                cell = values[index] if index < len(values) else None
+                try:
+                    value = convert(cell or "", rules[field])
+                    if field in seen and value is not None:
+                        if value in seen[field]:
+                            raise Invalid("duplicate")
+                        seen[field].add(value)
+                    parsed[field] = value
+                except Invalid as exc:
+                    if not report.findings:
+                        first_field = field
+                    report.findings.append(Finding(line=line, column=headers[index], entered=cell,
+                                                   expected=expectation(rules[field], str(exc)), code=str(exc)))
+            if len(report.findings) == prior_count:
+                rows.append(parsed)
+                run.rows_validated += 1
+        if report.findings:
+            first = report.findings[0]
+            run.code, run.row, run.field = first.code, first.line, first_field
+            return run
         if not rows:
             raise Invalid("empty_file")
-        run.row = None
         if profile == "orders":
             run.enter("transformation")
             orders = [(r["quantity"], int(r["unit_price"] * 100)) for r in rows]

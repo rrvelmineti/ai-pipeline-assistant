@@ -1,14 +1,14 @@
 # AI Pipeline Troubleshooting Assistant
 
-Query Desk opens with a quick orders check. Run a demo or upload a synthetic CSV, then expand a suggested question to see the result, its location, or the next check. These answers come from the current run and work without an API key. Version 2 investigates synthetic orders and inventory CSVs. Select **Investigate** in the Streamlit sidebar. The classic orders demo and CLI are also available.
+Upload an orders CSV, map its quantity and unit price columns and run the check. The app scans every readable record within the 2 MB and 10,000-row limits, lists cell errors with the starting CSV line, source column, entered value and expected rule, and identifies unmapped columns. Download the file check as JSON. File, mapping and parsing failures can prevent a complete scan. A batch with any error is never loaded. Checking the file requires no model or API key. Optional AI guidance uses sanitized evidence for the primary failure. The Investigate page also supports inventory. Repository fixtures are for development only.
 
 ## Repeat the portfolio demo
 
-1. On **Investigate**, choose **Successful orders** and confirm the mapping. Inspect the committed batch total. Run it again and look for `already_loaded: true`.
-2. Choose **Broken orders**. Inspect the failure at physical line 3. Evidence-only mode works offline.
+1. On **Investigate**, upload `examples/orders/Orders.csv`, choose the orders profile and confirm the mapping. Inspect the committed batch total. Run it again and look for `already_loaded: true`.
+2. Replace the upload with `examples/orders/invalid_quantity.csv` and run the orders profile. Inspect the failure at physical line 3. Evidence-only mode works offline.
 3. Select **RAG** and opt in. The app embeds the public runbooks, searches Chroma and asks Gemini for an explanation and a cited next check. Inspect the actual passages and token reserve. A missing or mismatched citation suppresses the model answer.
 4. Select **Agent with read-only tools** and ask how many orders are stored. Inspect the tool trace. The session contains two orders after step 1. The model chooses whether to query. If it skips the query, no count has been verified by the agent.
-5. Upload an orders export with renamed columns or try the inventory snapshot. Inventory validates SKU uniqueness, stock and an optional ISO date. Download the evidence or investigation JSON before closing the session.
+5. Upload an orders export with renamed columns or upload an inventory CSV and select the inventory profile. Inventory validates SKU uniqueness, stock and an optional ISO date. Download the evidence or investigation JSON before closing the session.
 
 For v2 AI, configure `GEMINI_API_KEY`, `GEMINI_MODEL`, and **`GEMINI_EMBEDDING_MODEL`** using model IDs available to your own Google project. Investigations call external APIs only after opt-in. Use synthetic uploads. The optional AI request includes a fixed question, approved runbook content, sanitized evidence and aggregate tool results. Source cell values and uploaded headers are excluded.
 
@@ -44,9 +44,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-Open the local URL printed in the terminal. Choose the successful or broken demo,
-then **Run pipeline**. You can also upload a synthetic CSV and download its JSON
-report. No API key is needed. Linux/macOS: use `.venv/bin/python` instead.
+Open the local URL printed in the terminal. Upload a synthetic CSV with the columns `quantity` and `unit_price`,
+then confirm the mapping and run the pipeline to inspect and download its JSON report. No API key is needed. Linux/macOS: use `.venv/bin/python` instead.
 The interface supports native light/dark themes. It clears old results when input changes.
 
 ## Command-line workflow (no external packages needed)
