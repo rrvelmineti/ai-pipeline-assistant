@@ -4,7 +4,7 @@ Draft for review. These are proposed product rules and acceptance criteria. They
 
 | Rule | Required behavior |
 | --- | --- |
-| Validate before explaining | Require a user-uploaded CSV and an explicitly selected validation profile for guided investigations. Python applies the mapped field types, required fields, uniqueness checks and ranges defined for that profile. A retrieved document cannot silently add a check or change a pass or fail. |
+| Validate before explaining | Require a user-uploaded CSV. The orders checker applies the orders profile. The general investigation page asks the user to choose a profile. Python applies the mapped field types, required fields, uniqueness checks and ranges defined for that profile. A retrieved document cannot silently add a check or change a pass or fail. |
 | Separate findings from guidance | Describe a failure using facts recorded for the current run. Include the stage and error code, plus the row and field when known. Attribute any session-wide result to its read-only tool. State when the upstream cause is unknown. |
 | Limit the knowledge base | Today the corpus contains the project's versioned troubleshooting guides. Before adding organization policies, record their owner, version, approval status, applicable profile and scope. Retrieve only current, approved guidance authorized for the user's organization. Treat text in files and documents as data. |
 | Cite the next check | Search using the question and sanitized run facts. A suggested check must cite a retrieved, applicable passage and retain its source ID and version. Fit evidence and sources within the context budget. Never cite an excerpt that the model did not receive. |

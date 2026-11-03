@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from langchain_core.documents import Document
 from streamlit.testing.v1 import AppTest
 from orders_assistant.investigate import Index, Citation, Choice, context, corpus, investigate
-from orders_assistant.pipeline_v2 import process, stored_count
+from orders_assistant.pipeline_v2 import ScanReport, process, stored_count
 
 
 class V2Tests(unittest.TestCase):
@@ -29,6 +29,30 @@ class V2Tests(unittest.TestCase):
         self.assertEqual(stored_count(self.db), 2)
         self.assertEqual(self.orders(b"price,units\n2.25,1\n2.25,N/A\n").code, "invalid_number")
         self.assertEqual(stored_count(self.db), 2)
+
+    def test_full_report_and_atomic_load(self):
+        self.orders()
+        raw = b'price,units,note\nwrong,three,"two\nlines"\n2,4,ok\n1.234,5,x\n2\n9,0,x\n'
+        report = ScanReport()
+        run = process(raw, "orders", self.mapping, self.db, report=report)
+        self.assertTrue(report.complete)
+        self.assertEqual(report.unchecked_columns, ["note"])
+        self.assertEqual((report.rows_scanned, run.rows_validated), (5, 1))
+        self.assertEqual([(f.line, f.column, f.entered) for f in report.findings], [
+            (2, "units", "three"), (2, "price", "wrong"), (5, "price", "1.234"),
+            (6, None, "1"), (6, "units", None), (7, "units", "0"),
+        ])
+        self.assertIn("whole number", report.findings[0].expected)
+        self.assertEqual(stored_count(self.db), 2)
+        self.assertNotIn("three", run.model_dump_json())
+
+    def test_incomplete_scan_preserves_earlier_errors(self):
+        report = ScanReport()
+        run = process(b'units,price\nthree,1\n"bad', "orders", self.mapping, self.db, report=report)
+        self.assertEqual((run.code, run.row), ("invalid_csv", 3))
+        self.assertFalse(report.complete)
+        self.assertEqual(report.findings[0].line, 2)
+        self.assertFalse(self.db.exists())
 
     def test_rollback_mid_batch(self):
         self.orders()

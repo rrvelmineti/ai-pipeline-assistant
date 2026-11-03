@@ -1,6 +1,6 @@
 # AI Pipeline Troubleshooting Assistant
 
-Upload a synthetic CSV to start a guided investigation. Select an orders or inventory validation profile, map the columns, and run the pipeline. Expand a suggested question to see the result, its location, or the next check. The same guided workflow is available on **Investigate**. For a two-column orders CSV, the home page also offers **Quick orders check**. Example files in the repository are development fixtures.
+Upload an orders CSV, map its quantity and unit price columns and run the check. The app scans every readable record within the 2 MB and 10,000-row limits, lists cell errors with the starting CSV line, source column, entered value and expected rule, and identifies unmapped columns. Download the file check as JSON. File, mapping and parsing failures can prevent a complete scan. A batch with any error is never loaded. Checking the file requires no model or API key. Optional AI guidance uses sanitized evidence for the primary failure. The Investigate page also supports inventory. Repository fixtures are for development only.
 
 ## Repeat the portfolio demo
 
@@ -45,7 +45,7 @@ python -m venv .venv
 ```
 
 Open the local URL printed in the terminal. Upload a synthetic CSV with the columns `quantity` and `unit_price`,
-then choose **Quick orders check** and **Run pipeline** to inspect and download its JSON report. No API key is needed. Linux/macOS: use `.venv/bin/python` instead.
+then confirm the mapping and run the pipeline to inspect and download its JSON report. No API key is needed. Linux/macOS: use `.venv/bin/python` instead.
 The interface supports native light/dark themes. It clears old results when input changes.
 
 ## Command-line workflow (no external packages needed)

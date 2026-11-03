@@ -13,25 +13,27 @@ from orders_assistant.query_desk import location, questions
 from orders_assistant.core import MAX_BYTES
 from orders_assistant.explain import gemini_settings
 from orders_assistant.investigate import Index, OUTPUT_TOKENS, corpus, evidence, investigate, keyword_search
-from orders_assistant.pipeline_v2 import PROFILES, process, reader_for
+from orders_assistant.pipeline_v2 import PROFILES, ScanReport, process, reader_for
 
 
-def show_investigation(upload):
+def show_investigation(upload, profile=None):
     if "v2_dir" not in st.session_state:
         st.session_state.v2_dir = tempfile.TemporaryDirectory()
         st.session_state.v2_history = []
     folder = Path(st.session_state.v2_dir.name)
     db = folder / "orders.sqlite"
     if upload is None or upload.size > MAX_BYTES:
-        for key in ("v2_identity", "v2_run", "v2_answer"):
+        for key in ("v2_identity", "v2_run", "v2_answer", "v2_report"):
             st.session_state.pop(key, None)
         if upload is not None:
             st.error("The file exceeds two million bytes.")
         st.stop()
     raw = upload.getvalue()
-    profile = st.selectbox("Validation profile", list(PROFILES), index=None,
+    if profile is None:
+        profile = st.selectbox("Validation profile", list(PROFILES), index=None,
                            placeholder="Choose the rules for your file")
     if profile is None:
+        st.session_state.pop("v2_report", None)
         st.session_state.pop("v2_run", None)
         st.session_state.pop("v2_answer", None)
         st.stop()
@@ -59,16 +61,30 @@ def show_investigation(upload):
     identity = (hashlib.sha256(raw).hexdigest(), profile, tuple(mapping.items()), tuple(limits.items()))
     if st.session_state.get("v2_identity") != identity:
         st.session_state.v2_identity = identity
+        st.session_state.pop("v2_report", None)
         st.session_state.pop("v2_run", None)
         st.session_state.pop("v2_answer", None)
     if st.button("Confirm mapping and run pipeline", type="primary"):
-        run = process(raw, profile, mapping, db, limits=limits)
+        report = ScanReport()
+        run = process(raw, profile, mapping, db, limits=limits, report=report)
+        st.session_state.v2_report = report
         st.session_state.v2_run = run
         st.session_state.v2_history.append(run)
         st.session_state.pop("v2_answer", None)
     run = st.session_state.get("v2_run")
     if not run:
         st.stop()
+    report = st.session_state.v2_report
+    st.subheader("File check")
+    st.write(f"Rows checked: {report.rows_scanned} · Rows passing: {run.rows_validated} · Issues found in checked rows: {len(report.findings)}")
+    if not report.complete:
+        st.warning("Scan incomplete. Review the file or configuration error below before relying on these counts.")
+    if report.unchecked_columns:
+        st.text("Unchecked columns (no mapped rule): " + ", ".join(report.unchecked_columns))
+    if report.findings:
+        st.dataframe([item.model_dump() for item in report.findings], hide_index=True)
+    export = {"run": run.model_dump(), **report.model_dump()}
+    st.download_button("Download file check (JSON)", json.dumps(export, indent=2), "file-check.json")
     if run.code == "ok":
         st.success(f"{run.rows_validated} rows validated.")
         if run.total_cents is not None:
@@ -81,7 +97,7 @@ def show_investigation(upload):
                    ("What should I check next?", "Compare the validated count with the source export.")])
     else:
         docs = {d.metadata["section"]: d for d in corpus() if d.metadata["code"] == run.code}
-        st.warning(f"Stopped during {run.stage} · {run.code}")
+        st.warning(f"Batch was not loaded · {run.stage} · {run.code}")
         problem = {
             "invalid_number": "A numeric field did not meet its format or range rule.",
             "invalid_date": "A date did not meet the ISO date rule.",
@@ -101,6 +117,8 @@ def show_investigation(upload):
     with st.expander("Inspect the recorded evidence"):
         st.json(run.model_dump(), expanded=False)
     st.subheader("Investigate further")
+    if report.findings and report.complete:
+        st.caption("Follow-up guidance uses the first finding. The file check above contains every recorded issue.")
     question = st.selectbox("Investigation question", ["What should I check next?",
         "How many orders are stored in this session?", "Has this failure happened before in this session?"])
     mode = st.radio("Investigation mode", ["Evidence only", "RAG", "Agent with read-only tools"])
