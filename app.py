@@ -1,31 +1,37 @@
 """Single-user local demo: python -m streamlit run app.py."""
+import hashlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import streamlit as st
+from orders_assistant.investigation_ui import show_investigation
 from orders_assistant.query_desk import header, location, questions
 from orders_assistant.core import analyze, MAX_BYTES
 from orders_assistant.explain import explain, gemini_explain, ExplanationError
 
 st.set_page_config(page_title="Query Desk · Pipeline Assistant", layout="centered")
-header("ORDERS / QUICK CHECK")
+header("PIPELINE INVESTIGATION")
 st.caption("Use synthetic data. Files are processed on the server; download your report before leaving this session.")
-choice = st.radio("Choose input", ["Successful demo", "Broken quantity demo", "Upload CSV"], horizontal=True)
-upload = st.file_uploader("Orders CSV · up to 2 MB", type=["csv"]) if choice == "Upload CSV" else None
-sample = "Orders.csv" if choice == "Successful demo" else "invalid_quantity.csv"
-raw = (Path(__file__).resolve().parent / "examples" / "orders" / sample).read_bytes()
-if choice == "Upload CSV":
-    raw = upload.getvalue() if upload is not None else None
-# Changing inputs must not leave results from another file visible.
-import hashlib
-fingerprint = hashlib.sha256(raw).hexdigest() if raw is not None else None
+upload = st.file_uploader("Upload your CSV · up to 2 MB", type=["csv"])
+if upload is None:
+    for key in ("input_hash", "record", "ai", "v2_identity", "v2_run", "v2_answer"):
+        st.session_state.pop(key, None)
+    st.stop()
+workflow = st.radio("Workflow", ["Guided investigation", "Quick orders check"], horizontal=True)
+if workflow == "Guided investigation":
+    show_investigation(upload)
+    st.stop()
+
+st.caption("The quick check expects the columns quantity and unit_price.")
+raw = upload.getvalue()
+fingerprint = hashlib.sha256(raw).hexdigest()
 if st.session_state.get("input_hash") != fingerprint:
     st.session_state.pop("record", None)
     st.session_state.pop("ai", None)
     st.session_state["input_hash"] = fingerprint
-if raw is not None and len(raw) > MAX_BYTES:
+if len(raw) > MAX_BYTES:
     st.error("Please upload a CSV smaller than 2 MB.")
-elif st.button("Run pipeline", type="primary", disabled=raw is None):
+elif st.button("Run pipeline", type="primary"):
     with TemporaryDirectory() as folder:
         source = Path(folder) / "Orders.csv"
         source.write_bytes(raw)
@@ -67,5 +73,3 @@ if record:
                        file_name=f"run-{record['run_id']}.json", mime="application/json")
 st.divider()
 st.caption("No automatic repairs. Offline checks are deterministic; optional AI classification is checked against the evidence.")
-
-st.markdown("[Open the investigation workspace →](./Investigate) · Column mapping, inventory, and AI tools")
