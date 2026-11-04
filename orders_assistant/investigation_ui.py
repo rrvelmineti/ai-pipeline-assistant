@@ -1,139 +1,130 @@
-"""Session-isolated v2 portfolio workflow."""
+"""Upload-only, validation-only Query Desk."""
 import csv
 import hashlib
 import json
 import os
 import tempfile
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import streamlit as st
 
-from orders_assistant.query_desk import location, questions
-from orders_assistant.core import MAX_BYTES
-from orders_assistant.explain import gemini_settings
-from orders_assistant.investigate import Index, OUTPUT_TOKENS, corpus, evidence, investigate, keyword_search
-from orders_assistant.pipeline_v2 import PROFILES, ScanReport, process, reader_for
+from .csv_check import ColumnRule, DATE_FORMATS, KINDS, MAX_FILE_BYTES, check, suggest
+from .query_desk import questions
 
 
-def show_investigation(upload, profile=None):
-    if "v2_dir" not in st.session_state:
-        st.session_state.v2_dir = tempfile.TemporaryDirectory()
-        st.session_state.v2_history = []
-    folder = Path(st.session_state.v2_dir.name)
-    db = folder / "orders.sqlite"
-    if upload is None or upload.size > MAX_BYTES:
-        for key in ("v2_identity", "v2_run", "v2_answer", "v2_report"):
-            st.session_state.pop(key, None)
-        if upload is not None:
-            st.error("The file exceeds two million bytes.")
-        st.stop()
+def clear_review():
+    for key in ("csv_report", "csv_answer"):
+        st.session_state.pop(key, None)
+
+
+def show_investigation(upload):
+    if upload is None:
+        clear_review()
+        st.session_state.pop("csv_identity", None)
+        st.info("Upload a CSV to begin. No sample data is selected.")
+        return
     raw = upload.getvalue()
-    if profile is None:
-        profile = st.selectbox("Validation profile", list(PROFILES), index=None,
-                           placeholder="Choose the rules for your file")
-    if profile is None:
-        st.session_state.pop("v2_report", None)
-        st.session_state.pop("v2_run", None)
-        st.session_state.pop("v2_answer", None)
-        st.stop()
+    digest = hashlib.sha256(raw).hexdigest()
+    if st.session_state.get("csv_source") != digest:
+        clear_review()
+        # Remove old per-column choices, including when the user replaces the file.
+        for key in list(st.session_state):
+            if key.startswith("csv_rule_"):
+                del st.session_state[key]
+        st.session_state.csv_source = digest
+    if len(raw) > MAX_FILE_BYTES:
+        clear_review()
+        st.error("The upload exceeds 20 MB. Split it into smaller CSV files.")
+        return
     try:
-        headers = next(reader_for(raw), [])
-    except (UnicodeError, csv.Error):
-        headers = []
-    with st.expander("Review column mapping", expanded=True):
-        st.write("Source columns", headers)
-        mapping = {}
-        for name, rule in PROFILES[profile].items():
-            choices = [None, *dict.fromkeys(headers)]
-            selected = st.selectbox(f"{name} ({rule.kind}, {'required' if rule.required else 'optional'})",
-                                    choices, index=choices.index(name) if name in choices else 0,
-                                    format_func=lambda x: "Unmapped" if x is None else x)
-            if selected is not None:
-                mapping[name] = selected
-    limits = {}
-    with st.expander("Numeric validation ranges"):
-        for field, rule in PROFILES[profile].items():
-            if rule.kind in {"integer", "decimal"}:
-                low = st.number_input(f"Minimum {field}", rule.minimum, rule.maximum, rule.minimum)
-                high = st.number_input(f"Maximum {field}", rule.minimum, rule.maximum, rule.maximum)
-                limits[field] = (low, high)
-    identity = (hashlib.sha256(raw).hexdigest(), profile, tuple(mapping.items()), tuple(limits.items()))
-    if st.session_state.get("v2_identity") != identity:
-        st.session_state.v2_identity = identity
-        st.session_state.pop("v2_report", None)
-        st.session_state.pop("v2_run", None)
-        st.session_state.pop("v2_answer", None)
-    if st.button("Confirm mapping and run pipeline", type="primary"):
-        report = ScanReport()
-        run = process(raw, profile, mapping, db, limits=limits, report=report)
-        st.session_state.v2_report = report
-        st.session_state.v2_run = run
-        st.session_state.v2_history.append(run)
-        st.session_state.pop("v2_answer", None)
-    run = st.session_state.get("v2_run")
-    if not run:
-        st.stop()
-    report = st.session_state.v2_report
-    st.subheader("File check")
-    st.write(f"Rows checked: {report.rows_scanned} · Rows passing: {run.rows_validated} · Issues found in checked rows: {len(report.findings)}")
+        headers, proposed = suggest(raw)
+    except (ValueError, UnicodeError, csv.Error):
+        clear_review()
+        st.error("Cannot read the CSV headers or sample. Check UTF-8 encoding, CSV quoting, and nonempty unique headers (up to 200).")
+        return
+    st.subheader("Confirm what each column should contain")
+    st.caption("Suggestions use headings and up to 500 records. Change any incorrect guess. The review scans every readable record, up to 100,000.")
+    rules = {}
+    with st.expander("Column types and date formats", expanded=True):
+        for i, name in enumerate(headers):
+            rule = proposed[name]
+            st.text(name)
+            left, right = st.columns([2, 1])
+            kind = left.selectbox("Expected type", KINDS, index=KINDS.index(rule.kind), key=f"csv_rule_{i}_type")
+            allow_blank = right.checkbox("Allow blanks", key=f"csv_rule_{i}_blank")
+            fmt = None
+            if kind == "Date":
+                formats = [None, *DATE_FORMATS]
+                fmt = st.selectbox("Date format", formats,
+                                   index=formats.index(rule.date_format),
+                                   format_func=lambda f: f or "Choose the intended format",
+                                   key=f"csv_rule_{i}_date")
+            st.caption(rule.reason)
+            rules[name] = ColumnRule(kind=kind, date_format=fmt, allow_blank=allow_blank)
+    unresolved = any(r.kind == "Date" and r.date_format is None for r in rules.values())
+    if unresolved:
+        st.warning("Choose a single intended format for each date column before reviewing.")
+    skipped = [h for h, r in rules.items() if r.kind == "Not checked"]
+    if skipped:
+        st.text("Columns left unchecked: " + ", ".join(skipped))
+    identity = (digest, json.dumps({h: asdict(r) for h, r in rules.items()}, sort_keys=True))
+    if st.session_state.get("csv_identity") != identity:
+        clear_review()
+        st.session_state.csv_identity = identity
+    if st.button("Confirm types and review CSV", type="primary", disabled=unresolved):
+        st.session_state.csv_report = check(raw, rules)
+        st.session_state.pop("csv_answer", None)
+    report = st.session_state.get("csv_report")
+    if report is None:
+        return
+    st.subheader("Your file review")
+    a, b = st.columns(2)
+    a.metric("Records reviewed", report.rows_checked)
+    b.metric("Issues found", report.issue_count)
     if not report.complete:
-        st.warning("Scan incomplete. Review the file or configuration error below before relying on these counts.")
+        st.error("Review incomplete. " + report.file_error)
+    elif report.issue_count:
+        st.warning(f"{report.issue_count} issues found under the confirmed rules.")
+    elif report.unchecked_columns:
+        st.warning("No issues found in checked columns. Some columns were not checked.")
+    else:
+        st.success("No data type or format issues found under the confirmed rules.")
+    st.caption("This checks formats and missing values, not factual accuracy or business logic. No totals are calculated, no rows are loaded, and no values are changed.")
     if report.unchecked_columns:
-        st.text("Unchecked columns (no mapped rule): " + ", ".join(report.unchecked_columns))
+        st.text("Unchecked columns: " + ", ".join(report.unchecked_columns))
     if report.findings:
-        st.dataframe([item.model_dump() for item in report.findings], hide_index=True)
-    export = {"run": run.model_dump(), **report.model_dump()}
-    st.download_button("Download file check (JSON)", json.dumps(export, indent=2), "file-check.json")
-    if run.code == "ok":
-        st.success(f"{run.rows_validated} rows validated.")
-        if run.total_cents is not None:
-            st.metric("Committed batch total", f"{run.total_cents // 100}.{run.total_cents % 100:02d}")
-        outcome = ("Inventory was validated only; no orders were stored." if profile == "inventory" else
-                   "This batch was already loaded; no duplicate orders were added." if run.already_loaded else
-                   "The orders batch was committed to this session’s database.")
-        questions([("What did this run validate?", f"{run.rows_validated} rows passed the {profile} profile."),
-                   ("What was stored?", outcome),
-                   ("What should I check next?", "Compare the validated count with the source export.")])
-    else:
-        docs = {d.metadata["section"]: d for d in corpus() if d.metadata["code"] == run.code}
-        st.warning(f"Batch was not loaded · {run.stage} · {run.code}")
-        problem = {
-            "invalid_number": "A numeric field did not meet its format or range rule.",
-            "invalid_date": "A date did not meet the ISO date rule.",
-            "duplicate": "A field that must be unique contained a repeated value.",
-            "missing_value": "A required value was missing.",
-            "invalid_mapping": "The headers, selected columns, or configured limits did not meet the profile rules.",
-            "invalid_csv": "The input could not be parsed as the expected UTF-8 CSV.",
-            "database_failure": "The database operation failed.",
-            "empty_file": "No data rows were available to validate.",
-            "input_limit": "The input exceeded a configured file or row limit.",
-        }.get(run.code, "The run did not complete.")
-        # A parser failure may retain the last processed position rather than the failing line.
-        where = (location(None, None) if run.code == "invalid_csv" else location(run.row, run.field))
-        check = docs.get("Next check")
-        questions([("Why did this run stop?", problem), ("Which row failed?", where),
-                   ("What should I check next?", check.page_content if check else "Inspect the source export.")])
-    with st.expander("Inspect the recorded evidence"):
-        st.json(run.model_dump(), expanded=False)
-    st.subheader("Investigate further")
-    if report.findings and report.complete:
-        st.caption("Follow-up guidance uses the first finding. The file check above contains every recorded issue.")
-    question = st.selectbox("Investigation question", ["What should I check next?",
-        "How many orders are stored in this session?", "Has this failure happened before in this session?"])
-    mode = st.radio("Investigation mode", ["Evidence only", "RAG", "Agent with read-only tools"])
-    if mode == "Evidence only":
-        st.write(evidence(run))
-        st.caption("Offline keyword matches")
-        for doc in keyword_search(run.code + " " + question, corpus()):
-            st.write(doc.metadata["title"], doc.page_content)
-    else:
-        allow = st.checkbox("Allow Google to receive the selected question, sanitized run facts, public runbook passages and session aggregate counts.")
-        if st.button("Investigate", disabled=not allow):
-            st.session_state.pop("v2_answer", None)
-            start = time.monotonic()
+        st.dataframe(report.findings, hide_index=True, width="stretch")
+        st.caption("Line numbers refer to the starting physical CSV line, including the header. Suggestions require review against the source.")
+    if report.issue_count > len(report.findings):
+        st.warning("All scanned issues are counted, but only the first 5,000 details are retained. Split the file to inspect the rest. Values longer than 500 characters are marked as truncated.")
+    questions([
+        ("What was checked?", "Each readable row was checked against the types, date formats and blank-value choices you confirmed. An unchecked column has no validation rule."),
+        ("Can I trust every value now?", "A value can match a format and still be factually wrong. This review does not certify that the entire dataset is clean."),
+        ("What should I do next?", "Review the flagged values against your source, make any verified changes in your original file, then upload it again." if report.issue_count else "Review the coverage and confirmed rules before using the data."),
+    ])
+    st.download_button("Download review (JSON)", json.dumps(report.to_dict(), indent=2),
+                       file_name="csv-review.json", mime="application/json")
+    if report.findings:
+        show_guidance(report)
+
+
+def show_guidance(report):
+    with st.expander("Optional AI guidance"):
+        st.caption("AI can retrieve relevant guidance for one selected issue; it cannot change your file.")
+        selected = st.selectbox("Issue to explain", range(len(report.findings)),
+                                format_func=lambda i: f"Issue {i + 1} · line {report.findings[i]['line']} · {report.findings[i]['column']}")
+        mode = st.radio("Guidance mode", ["RAG", "Agent with read-only tools"])
+        allow = st.checkbox("Allow Google to receive the issue category, line number and public guidance. Column headings and cell values are excluded.")
+        signature = (selected, mode)
+        if st.button("Explain selected issue", disabled=not allow):
+            st.session_state.pop("csv_answer", None)
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+                from .csv_guidance import explain_issue
+                from .explain import gemini_settings, ExplanationError
+                from .investigate import Index, OUTPUT_TOKENS
                 key, model = gemini_settings(st.secrets)
                 try:
                     em = st.secrets.get("GEMINI_EMBEDDING_MODEL")
@@ -141,20 +132,28 @@ def show_investigation(upload, profile=None):
                     em = None
                 em = em or os.getenv("GEMINI_EMBEDDING_MODEL")
                 if not em:
-                    st.warning("Set GEMINI_EMBEDDING_MODEL to a text embedding model available in your Google project.")
-                    st.stop()
-                embeddings = GoogleGenerativeAIEmbeddings(model=em, google_api_key=key, vertexai=False)
-                index = Index(folder / "index", em, embeddings)
-                llm = ChatGoogleGenerativeAI(model=model, google_api_key=key, vertexai=False, temperature=0,
-                                             timeout=30, max_retries=0, max_output_tokens=OUTPUT_TOKENS)
-                result = investigate(run, question, index, llm, db, st.session_state.v2_history,
-                                     agent=mode.startswith("Agent"))
-                result["elapsed_seconds"] = round(time.monotonic() - start, 2)
-                st.session_state.v2_answer = (mode, question, result)
+                    raise ExplanationError("Set GEMINI_EMBEDDING_MODEL in Secrets to an available text embedding model.")
+                if "csv_index_dir" not in st.session_state:
+                    st.session_state.csv_index_dir = tempfile.TemporaryDirectory()
+                with st.spinner("Retrieving guidance…"):
+                    start = time.monotonic()
+                    embeddings = GoogleGenerativeAIEmbeddings(model=em, google_api_key=key, vertexai=False)
+                    index = Index(Path(st.session_state.csv_index_dir.name), em, embeddings)
+                    llm = ChatGoogleGenerativeAI(model=model, google_api_key=key, vertexai=False,
+                                                temperature=0, timeout=30, max_retries=0, max_output_tokens=OUTPUT_TOKENS)
+                    answer = explain_issue(report.findings[selected], index, llm, agent=mode.startswith("Agent"))
+                    answer["elapsed_seconds"] = round(time.monotonic() - start, 2)
+                    st.session_state.csv_answer = (signature, answer)
             except Exception:
-                st.warning("Investigation unavailable. Check the model settings, credentials and quota. The recorded pipeline evidence is available above.")
-        answer = st.session_state.get("v2_answer")
-        if answer and answer[:2] == (mode, question):
-            st.json(answer[2])
-            st.download_button("Download investigation", json.dumps(answer[2], indent=2), "investigation.json")
-    st.download_button("Download evidence", run.model_dump_json(indent=2), "evidence.json")
+                st.warning("AI guidance is unavailable. Check the API key, chat and embedding model settings, and quota. Your file review is still available.")
+        saved = st.session_state.get("csv_answer")
+        if saved and saved[0] == signature:
+            answer = saved[1]
+            if answer["next_check"]:
+                st.write(answer["next_check"])
+                st.caption("Source: " + answer["citation"])
+                if answer["model_explanation"]:
+                    st.text(answer["model_explanation"])
+            else:
+                st.info("No supported cited guidance was returned. Verify the finding against the source.")
+            st.json(answer, expanded=False)

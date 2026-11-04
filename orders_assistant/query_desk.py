@@ -26,7 +26,7 @@ def header(workspace, title="Ask about this run."):
 <div class="qd-mast"><span class="qd-mark" aria-hidden="true">≋</span>
 <span>Pipeline Assistant</span><span class="qd-edition">QUERY DESK</span></div>
 <div class="qd-intro"><small>{workspace}</small><h1>{title}</h1>
-<p>Upload your CSV and run the pipeline. Then open a question to explore the recorded evidence.</p></div>
+<p>Upload your file. Confirm the suggested types. See which values need attention.</p></div>
 """, unsafe_allow_html=True)
 
 
