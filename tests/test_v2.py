@@ -115,25 +115,3 @@ class V2Tests(unittest.TestCase):
         self.assertNotIn("INJECT_ENCODED", str(model.mock_calls) + str(writer.mock_calls))
         writer.invoke.return_value = Citation(explanation="Unsupported", source="invented", quote="no")
         self.assertIsNone(investigate(run, "Next?", index, model, self.db, [])["model_explanation"])
-
-    def test_v2_page(self):
-        page = Path(__file__).resolve().parents[1] / "pages/2_Investigate.py"
-        upload = Mock(size=64)
-        upload.getvalue.return_value = b"quantity,unit_price\n1,1.00\nthree,1.00\n"
-        uploader = patch("streamlit.file_uploader", return_value=upload)
-        uploader.start()
-        self.addCleanup(uploader.stop)
-        app = AppTest.from_file(str(page)).run()
-        app.selectbox[0].select("orders").run()
-        app.button[0].click().run()
-        self.assertFalse(app.exception)
-        self.assertIn("invalid_number", app.warning[0].value)
-        cards = {item.label: item for item in app.expander}
-        self.assertIn("line 3", cards["Which row failed?"].markdown[0].value)
-        self.assertIn("profile range", cards["What should I check next?"].markdown[0].value)
-        upload.getvalue.return_value = b"quantity,unit_price\n2,111.25\n"
-        app.run()
-        self.assertFalse(app.warning or app.metric)
-        app.button[0].click().run()
-        self.assertFalse(app.exception)
-        self.assertEqual(app.metric[0].value, "222.50")

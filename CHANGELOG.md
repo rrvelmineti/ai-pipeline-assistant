@@ -1,3 +1,11 @@
+# Validation-only CSV review
+
+- Replace orders/profile browser flows with upload-only generic column type review.
+- Infer reviewable types, check all readable rows, enforce a consistent selected date format and show reviewable suggestions.
+- Remove browser totals, database loads and numeric range controls.
+- Add generic, opt-in RAG and bounded read-only guidance with raw headers/cells excluded.
+- Keep previous CLI and pipeline exercises separate.
+
 # Changelog
 
 ## 1.0.0 — Orders assistant
