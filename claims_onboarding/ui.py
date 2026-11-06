@@ -8,6 +8,7 @@ import streamlit as st
 
 from orders_assistant.csv_check import MAX_FILE_BYTES, headers_of, reader
 
+from .handoff import client_letter, compare_submissions, comparison_markdown
 from .mapping import as_dicts, correction_log, gemini_suggest, heuristic_suggest
 from .readiness import findings_csv, gemini_summary, markdown_report, readiness, written_summary
 from .rules import RULES_PATH, RulesError, parse_rules, validate
@@ -112,10 +113,10 @@ def show_onboarding(upload):
     if facts is None:
         return
     report = st.session_state.claims_report
-    show_report(facts, report, as_dicts(suggestions))
+    show_report(facts, report, as_dicts(suggestions), specs)
 
 
-def show_report(facts, report, suggestions):
+def show_report(facts, report, suggestions, specs):
     st.subheader("4 · Go-live readiness")
     (st.success if facts["decision"] == "Ready" else st.error)(f"Decision: {facts['decision']}")
     for reason in facts["reasons"]:
@@ -156,3 +157,42 @@ def show_report(facts, report, suggestions):
                         file_name="claims-readiness.md", mime="text/markdown")
     right.download_button("Report (JSON)", json.dumps({**facts, "suggestions": suggestions}, indent=2),
                           file_name="claims-readiness.json", mime="application/json")
+    show_handoff(facts, report, specs)
+
+
+def show_handoff(facts, report, specs):
+    st.subheader("5 · Send back to the client")
+    client = st.text_input("Client name for the letter", value="the client", key="claims_client_name")
+    letter = client_letter(facts, report, specs, client.strip() or "the client")
+    with st.expander("Preview the client issue letter"):
+        st.markdown(letter)
+    st.download_button("Client issue letter (Markdown)", letter, file_name="claims-client-letter.md",
+                       mime="text/markdown")
+    st.caption("Written by code from the verified report: grouped by rule, with example lines and how to fix each.")
+
+    st.subheader("6 · Compare with the previous submission")
+    previous = st.file_uploader("Upload the JSON report from the client's previous file", type=["json"],
+                                key="claims_previous_report")
+    if previous is None:
+        st.caption("After the client resubmits, upload the earlier JSON report to see what was fixed and what is new.")
+        return
+    try:
+        before = json.loads(previous.getvalue())
+        if not isinstance(before, dict) or "findings_by_rule" not in before:
+            raise ValueError
+    except (ValueError, UnicodeError):
+        st.error("That is not a readiness report. Upload the Report (JSON) file downloaded from this page.")
+        return
+    comparison = compare_submissions(before, facts)
+    a, b, c = st.columns(3)
+    a.metric("Blockers", f"{comparison['current_blockers']:,}",
+             delta=comparison["current_blockers"] - comparison["previous_blockers"], delta_color="inverse")
+    b.metric("Rule groups fixed", comparison["fixed"])
+    c.metric("New rule groups", comparison["new"])
+    if comparison["same_file"]:
+        st.warning("Both reports are for the same file, so this is not a resubmission.")
+    if comparison["mapping_changed"]:
+        st.warning("The column mapping changed between the two checks; some differences may come from the mapping.")
+    st.dataframe(comparison["rows"], hide_index=True, width="stretch")
+    st.download_button("Comparison (Markdown)", comparison_markdown(comparison),
+                       file_name="claims-resubmission.md", mime="text/markdown")
