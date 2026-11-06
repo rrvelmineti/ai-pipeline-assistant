@@ -1,3 +1,9 @@
+# Claims onboarding: client handoff
+
+- Add a client issue letter: findings grouped by rule in the client's own column names, with up to 5 example lines and how to fix each. Written by code from the verified report.
+- Add a resubmission comparison: upload the previous JSON report to see each rule group fixed, improved, unchanged, worse or new; flags a changed mapping or the same file sent twice.
+- Add an implementation playbook, a sample client letter, UAT cases 18 to 21 and 9 offline tests.
+
 # Claims data onboarding
 
 - Add a Claims Onboarding page: name-matching and optional Gemini column-mapping suggestions (headings only), analyst approval with a correction log, plain-language editable rules, every-row checks with blockers and warnings, and a go-live readiness report.

@@ -5,7 +5,8 @@ extract to a go-live decision: AI suggests how the client's columns map to the p
 fields, the analyst approves or corrects each one, code checks every row against
 plain-language rules, and a readiness report says **Ready** or **Not ready** with reasons.
 
-All data is synthetic. See the [problem statement](problem-statement.md),
+All data is synthetic. See the [implementation playbook](implementation-playbook.md),
+[problem statement](problem-statement.md),
 [user stories](user-stories.md), [process map](process-map.md) and [UAT results](uat.md).
 
 ## Try it
@@ -29,6 +30,8 @@ then approve the mapping.
 | Checks | Every row is checked: required, unique, number formats, 10-digit NPI, ICD-10 shape, dates not in the future, service not before birth, paid not above billed, allowed status values. | Code |
 | Decision | Ready only if required fields are mapped, the scan finished, and there are zero blockers. | Code |
 | Summary | A code-written summary always. An optional Gemini summary is rejected if it states any figure or decision not in the report. | Both |
+| Client letter | Problems grouped by rule in the client's own column names, with up to 5 example lines and how to fix each. [Sample](sample-client-letter.md). | Code |
+| Resubmission | Upload the previous JSON report: each rule group is marked fixed, improved, unchanged, worse or new. A changed mapping or the same file sent twice is flagged. | Code |
 
 ## Results
 
