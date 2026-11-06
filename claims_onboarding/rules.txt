@@ -1,0 +1,34 @@
+# Claims onboarding rules for the platform's target fields.
+#
+# One field per line:   field name | what the field means | rules separated by commas
+#
+# Rules you can use (not case sensitive):
+#   required                       the field must be mapped and every row must have a value
+#   unique                         no two rows may share the same value
+#   number                         a plain number such as 125.50 (no $ signs or commas)
+#   whole number                   digits only
+#   not negative                   zero or more
+#   exactly N digits               for example: exactly 10 digits
+#   exactly N characters           for example: exactly 5 characters
+#   date YYYY-MM-DD                also DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, MM-DD-YYYY, YYYY/MM/DD
+#   not in the future              a date that is not after today
+#   not before OTHER_FIELD         a date that is not earlier than another date field
+#   not greater than OTHER_FIELD   a number that is not larger than another number field
+#   ICD-10 format                  looks like an ICD-10-CM diagnosis code, such as E11.9
+#   one of A / B / C               one of the listed values, separated by slashes
+#
+# Add (warning) after a rule to report it without blocking go-live.
+# Everything else is a blocker: the file is not ready until it is fixed.
+
+claim_id         | Unique number identifying the claim                  | required, unique
+member_id        | Insured member's identifier                          | required
+member_dob       | Member's date of birth                               | required, date YYYY-MM-DD, not in the future
+provider_npi     | Rendering provider's National Provider Identifier    | required, exactly 10 digits
+service_date     | Date the service was provided                        | required, date YYYY-MM-DD, not in the future, not before member_dob
+diagnosis_code   | Primary ICD-10-CM diagnosis code                     | required, ICD-10 format
+procedure_code   | CPT or HCPCS procedure code                          | required, exactly 5 characters
+place_of_service | Two-digit CMS place of service code                  | exactly 2 digits (warning)
+billed_amount    | Total amount charged by the provider                 | required, number, not negative
+allowed_amount   | Amount allowed under the provider contract           | number, not negative, not greater than billed_amount (warning)
+paid_amount      | Amount paid by the health plan                       | required, number, not negative, not greater than billed_amount
+claim_status     | Adjudication status of the claim                     | required, one of paid / denied / pending / adjusted

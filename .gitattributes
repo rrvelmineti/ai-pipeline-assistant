@@ -3,3 +3,5 @@
 *.md text eol=lf
 *.yml text eol=lf
 *.txt text eol=lf
+examples/claims/*.csv text eol=lf
+examples/claims/*.json text eol=lf

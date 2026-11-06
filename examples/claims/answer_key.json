@@ -1,0 +1,281 @@
+{
+  "mapping": {
+    "claim_id": "Clm_Nbr",
+    "member_id": "Subscriber Ref",
+    "member_dob": "Patient Birth Dt",
+    "provider_npi": "Rendering NPI",
+    "service_date": "DOS_From",
+    "diagnosis_code": "Primary Dx",
+    "procedure_code": "Svc Code",
+    "place_of_service": "POS",
+    "billed_amount": "Total Charges",
+    "allowed_amount": "Allowed Amt",
+    "paid_amount": "Plan Paid Amt",
+    "claim_status": "Claim Sts"
+  },
+  "rows": 2000,
+  "seed": 2026,
+  "planted_errors": [
+    {
+      "line": 331,
+      "field": "member_id",
+      "rule": "required"
+    },
+    {
+      "line": 388,
+      "field": "provider_npi",
+      "rule": "exactly 10 digits"
+    },
+    {
+      "line": 405,
+      "field": "place_of_service",
+      "rule": "exactly 2 digits"
+    },
+    {
+      "line": 478,
+      "field": "place_of_service",
+      "rule": "exactly 2 digits"
+    },
+    {
+      "line": 566,
+      "field": "paid_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 575,
+      "field": "paid_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 576,
+      "field": "service_date",
+      "rule": "date YYYY-MM-DD"
+    },
+    {
+      "line": 652,
+      "field": "place_of_service",
+      "rule": "exactly 2 digits"
+    },
+    {
+      "line": 664,
+      "field": "provider_npi",
+      "rule": "exactly 10 digits"
+    },
+    {
+      "line": 683,
+      "field": "claim_id",
+      "rule": "unique"
+    },
+    {
+      "line": 712,
+      "field": "claim_id",
+      "rule": "unique"
+    },
+    {
+      "line": 807,
+      "field": "allowed_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 894,
+      "field": "procedure_code",
+      "rule": "exactly 5 characters"
+    },
+    {
+      "line": 900,
+      "field": "claim_id",
+      "rule": "unique"
+    },
+    {
+      "line": 914,
+      "field": "claim_id",
+      "rule": "unique"
+    },
+    {
+      "line": 939,
+      "field": "paid_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 960,
+      "field": "allowed_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 973,
+      "field": "service_date",
+      "rule": "not before member_dob"
+    },
+    {
+      "line": 977,
+      "field": "place_of_service",
+      "rule": "exactly 2 digits"
+    },
+    {
+      "line": 1018,
+      "field": "claim_status",
+      "rule": "one of paid / denied / pending / adjusted"
+    },
+    {
+      "line": 1091,
+      "field": "diagnosis_code",
+      "rule": "ICD-10 format"
+    },
+    {
+      "line": 1098,
+      "field": "paid_amount",
+      "rule": "not negative"
+    },
+    {
+      "line": 1105,
+      "field": "allowed_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 1118,
+      "field": "service_date",
+      "rule": "not in the future"
+    },
+    {
+      "line": 1146,
+      "field": "claim_id",
+      "rule": "unique"
+    },
+    {
+      "line": 1156,
+      "field": "claim_status",
+      "rule": "one of paid / denied / pending / adjusted"
+    },
+    {
+      "line": 1249,
+      "field": "provider_npi",
+      "rule": "exactly 10 digits"
+    },
+    {
+      "line": 1263,
+      "field": "paid_amount",
+      "rule": "not negative"
+    },
+    {
+      "line": 1279,
+      "field": "provider_npi",
+      "rule": "exactly 10 digits"
+    },
+    {
+      "line": 1339,
+      "field": "provider_npi",
+      "rule": "exactly 10 digits"
+    },
+    {
+      "line": 1355,
+      "field": "service_date",
+      "rule": "date YYYY-MM-DD"
+    },
+    {
+      "line": 1378,
+      "field": "service_date",
+      "rule": "not in the future"
+    },
+    {
+      "line": 1411,
+      "field": "paid_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 1440,
+      "field": "diagnosis_code",
+      "rule": "ICD-10 format"
+    },
+    {
+      "line": 1453,
+      "field": "member_id",
+      "rule": "required"
+    },
+    {
+      "line": 1470,
+      "field": "diagnosis_code",
+      "rule": "ICD-10 format"
+    },
+    {
+      "line": 1483,
+      "field": "procedure_code",
+      "rule": "exactly 5 characters"
+    },
+    {
+      "line": 1562,
+      "field": "procedure_code",
+      "rule": "exactly 5 characters"
+    },
+    {
+      "line": 1578,
+      "field": "place_of_service",
+      "rule": "exactly 2 digits"
+    },
+    {
+      "line": 1604,
+      "field": "member_id",
+      "rule": "required"
+    },
+    {
+      "line": 1714,
+      "field": "billed_amount",
+      "rule": "number"
+    },
+    {
+      "line": 1717,
+      "field": "service_date",
+      "rule": "not in the future"
+    },
+    {
+      "line": 1764,
+      "field": "provider_npi",
+      "rule": "exactly 10 digits"
+    },
+    {
+      "line": 1766,
+      "field": "claim_status",
+      "rule": "one of paid / denied / pending / adjusted"
+    },
+    {
+      "line": 1770,
+      "field": "member_id",
+      "rule": "required"
+    },
+    {
+      "line": 1780,
+      "field": "billed_amount",
+      "rule": "number"
+    },
+    {
+      "line": 1819,
+      "field": "billed_amount",
+      "rule": "number"
+    },
+    {
+      "line": 1833,
+      "field": "allowed_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 1846,
+      "field": "service_date",
+      "rule": "date YYYY-MM-DD"
+    },
+    {
+      "line": 1852,
+      "field": "allowed_amount",
+      "rule": "not greater than billed_amount"
+    },
+    {
+      "line": 1903,
+      "field": "service_date",
+      "rule": "not before member_dob"
+    },
+    {
+      "line": 1958,
+      "field": "diagnosis_code",
+      "rule": "ICD-10 format"
+    }
+  ],
+  "note": "Synthetic data. Every value is invented; no real people or providers."
+}
