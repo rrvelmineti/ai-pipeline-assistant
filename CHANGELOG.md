@@ -1,3 +1,9 @@
+# Claims data onboarding
+
+- Add a Claims Onboarding page: name-matching and optional Gemini column-mapping suggestions (headings only), analyst approval with a correction log, plain-language editable rules, every-row checks with blockers and warnings, and a go-live readiness report.
+- Reject AI mappings that name unknown or reused headings, and AI summaries that state figures or decisions not in the verified report.
+- Add a deterministic synthetic claims generator with 52 planted errors and an answer key, an evaluation script, offline tests, UAT cases and case-study documentation.
+
 # Validation-only CSV review
 
 - Replace orders/profile browser flows with upload-only generic column type review.

@@ -2,6 +2,15 @@
 
 Upload a CSV, confirm suggested column types, and review the values that do not fit. This is a **validation-only** application: it does not calculate sales or product totals, load business rows into a database, or automatically change values. Both browser pages require an upload. No default dataset or sample selector is shown.
 
+## New: Claims Data Onboarding Assistant
+
+A second page, **Claims Onboarding**, takes a new health insurance client's claims file to a
+go-live decision. AI suggests how the client's columns map to the platform's fields (it sees
+headings only, never cell values), the analyst approves or corrects each mapping, code checks
+every row against [plain-language rules](claims_onboarding/rules.txt), and a readiness report
+says Ready or Not ready. On the 2,000-row synthetic sample the rule checks find all 52 planted
+errors with no false alarms. See the [case study](docs/claims/README.md).
+
 ## Use the application
 
 1. Upload a UTF-8 CSV with a header. The app supports up to **20 MB, 100,000 data records and 200 columns**.

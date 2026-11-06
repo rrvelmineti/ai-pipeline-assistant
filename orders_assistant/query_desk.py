@@ -20,13 +20,14 @@ _STYLE = """
 """
 
 
-def header(workspace, title="Ask about this run."):
+def header(workspace, title="Ask about this run.",
+           tagline="Upload your file. Confirm the suggested types. See which values need attention."):
     # Callers supply fixed page labels; no file or user text goes into HTML.
     st.markdown(_STYLE + f"""
 <div class="qd-mast"><span class="qd-mark" aria-hidden="true">≋</span>
 <span>Pipeline Assistant</span><span class="qd-edition">QUERY DESK</span></div>
 <div class="qd-intro"><small>{workspace}</small><h1>{title}</h1>
-<p>Upload your file. Confirm the suggested types. See which values need attention.</p></div>
+<p>{tagline}</p></div>
 """, unsafe_allow_html=True)
 
 
