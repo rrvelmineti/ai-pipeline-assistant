@@ -1,7 +1,8 @@
 # Claims data onboarding: UAT test cases
 
 Each case links to the user story it proves. "Actual" records what happened when the case
-was run. Every case also has an automated equivalent in `tests/test_claims.py`, so it is
+was run. Every case also has an automated equivalent in `tests/test_claims.py` or
+`tests/test_handoff.py`, so it is
 re-checked on every push by GitHub Actions.
 
 Run on 5 November 2026 against `examples/claims/client_claims.csv` (2,000 synthetic rows,
@@ -27,6 +28,10 @@ Run on 5 November 2026 against `examples/claims/client_claims.csv` (2,000 synthe
 | 15 | US-7 | AI summary says "ready" when the decision is "Not ready" | Summary rejected | Rejected | Pass |
 | 16 | US-2, US-7 | Inspect what is sent to Gemini | Headings and aggregate counts only; no claim IDs, NPIs, dates or amounts | No data values found in any request | Pass |
 | 17 | US-8 | Run `python -m evaluation.claims_mapping` | Mapping score and rule-check recall printed | Name matching 9 of 12 correct, 0 wrong; rules 52 of 52 | Pass |
+| 18 | Handoff | Download the client issue letter for the sample | Grouped by rule with counts; client column names; at most 5 example lines per rule; no analyst-only notes | As expected | Pass |
+| 19 | Handoff | Compare the sample with a copy where the NPI errors are fixed | NPI rule group "fixed", fewer blockers, no new groups | As expected | Pass |
+| 20 | Handoff | Compare a report with itself | Flagged as the same file; every group "unchanged" | As expected | Pass |
+| 21 | Handoff | Upload a previous report on the page after checking | Metrics for blockers, groups fixed and new groups; no error | As expected | Pass |
 
 ## Not yet tested
 

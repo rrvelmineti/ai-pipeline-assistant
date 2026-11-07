@@ -1,17 +1,34 @@
-# Query Desk · CSV data review
+# AI Pipeline Assistant · claims onboarding and CSV review
+
+Two tools for the work an implementation team does when a new client's data arrives.
+
+## Claims Data Onboarding Assistant: the implementation case
+
+**Client problem.** A new health insurance client must send its claims before go-live. The extract
+uses the client's own column names, its quality is unknown, and onboarding drags through rounds of
+"send, find problems, resend".
+
+**What it does.** The **Claims Onboarding** page takes the client's file to a go-live decision. AI
+suggests how the client's columns map to the platform's fields (it sees headings only, never cell
+values), the analyst approves or corrects each mapping, code checks every row against
+[plain-language rules](claims_onboarding/rules.txt), and a readiness report says Ready or Not ready.
+
+**How each round closes.** A **client issue letter** groups the problems by rule, uses the client's
+own column names, and gives example lines and how to fix each one
+([sample](docs/claims/sample-client-letter.md)). When the client resubmits, a **resubmission
+comparison** shows what was fixed, what is still open and what is new.
+
+**Results on the 2,000-row synthetic sample.** The rule checks find all 52 planted errors with no
+false alarms. Name matching maps 9 of 12 fields correctly, with 0 wrong, and leaves 3 for the analyst.
+
+Docs: [case study](docs/claims/README.md) · [implementation playbook](docs/claims/implementation-playbook.md) ·
+[process map](docs/claims/process-map.md) · [UAT](docs/claims/uat.md)
+
+## Query Desk · CSV data review
 
 Upload a CSV, confirm suggested column types, and review the values that do not fit. This is a **validation-only** application: it does not calculate sales or product totals, load business rows into a database, or automatically change values. Both browser pages require an upload. No default dataset or sample selector is shown.
 
-## New: Claims Data Onboarding Assistant
-
-A second page, **Claims Onboarding**, takes a new health insurance client's claims file to a
-go-live decision. AI suggests how the client's columns map to the platform's fields (it sees
-headings only, never cell values), the analyst approves or corrects each mapping, code checks
-every row against [plain-language rules](claims_onboarding/rules.txt), and a readiness report
-says Ready or Not ready. On the 2,000-row synthetic sample the rule checks find all 52 planted
-errors with no false alarms. See the [case study](docs/claims/README.md).
-
-## Use the application
+### Use the application
 
 1. Upload a UTF-8 CSV with a header. The app supports up to **20 MB, 100,000 data records and 200 columns**.
 2. Review the suggested type for each column. Suggestions use headings and up to 500 records; they can be wrong. Confirm or change them before running.
@@ -19,7 +36,7 @@ errors with no false alarms. See the [case study](docs/claims/README.md).
 4. Select **Confirm types and review CSV**.
 5. Review the issue table and download the JSON report. Verify suggestions against your source; then edit and re-upload the original file.
 
-## What is checked
+### What is checked
 
 | Confirmed type | Accepted format |
 | --- | --- |
@@ -42,7 +59,7 @@ Every readable record is scanned within the limits. Wrong field counts are repor
 
 “No data type or format issues found” means the confirmed checks passed, not that every value is true or the dataset meets all business rules. Skipped columns prevent an all-columns success message.
 
-## Optional RAG and agent guidance
+### Optional RAG and agent guidance
 
 After a finding is recorded, expand **Optional AI guidance**, select an issue and opt in. Configure these top-level entries in Streamlit Secrets using model IDs available in your project: GEMINI_API_KEY, GEMINI_MODEL and GEMINI_EMBEDDING_MODEL.
 
@@ -52,7 +69,7 @@ Agent mode uses LangGraph to choose up to two read-only tools: recorded sanitize
 
 Only the generic issue category, line number, fixed question, public passages and sanitized read results are sent externally. **CSV cells, headings and the original file are excluded.** The vector index contains public runbooks only. API quota or configuration failures leave the deterministic review available. Live provider behavior needs a separate test with configured models.
 
-## Privacy and limitations
+### Privacy and limitations
 
 Use synthetic files on the public demo. Uploads are processed on the server. Reports and the temporary rebuildable vector index are scoped to the browser session; download the report before leaving. Reports contain the entered values shown in findings. No user accounts are created by this app.
 
