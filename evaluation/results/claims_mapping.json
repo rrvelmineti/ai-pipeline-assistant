@@ -1,0 +1,195 @@
+{
+  "name_matching": {
+    "correct": 9,
+    "wrong": 0,
+    "left_blank": 3,
+    "fields": 12,
+    "details": [
+      {
+        "field": "claim_id",
+        "expected": "Clm_Nbr",
+        "suggested": "Clm_Nbr",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "member_id",
+        "expected": "Subscriber Ref",
+        "suggested": "Subscriber Ref",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "member_dob",
+        "expected": "Patient Birth Dt",
+        "suggested": "Patient Birth Dt",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "provider_npi",
+        "expected": "Rendering NPI",
+        "suggested": "Rendering NPI",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "service_date",
+        "expected": "DOS_From",
+        "suggested": "DOS_From",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "diagnosis_code",
+        "expected": "Primary Dx",
+        "suggested": null,
+        "outcome": "left blank",
+        "source": "none"
+      },
+      {
+        "field": "procedure_code",
+        "expected": "Svc Code",
+        "suggested": null,
+        "outcome": "left blank",
+        "source": "none"
+      },
+      {
+        "field": "place_of_service",
+        "expected": "POS",
+        "suggested": "POS",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "billed_amount",
+        "expected": "Total Charges",
+        "suggested": null,
+        "outcome": "left blank",
+        "source": "none"
+      },
+      {
+        "field": "allowed_amount",
+        "expected": "Allowed Amt",
+        "suggested": "Allowed Amt",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "paid_amount",
+        "expected": "Plan Paid Amt",
+        "suggested": "Plan Paid Amt",
+        "outcome": "correct",
+        "source": "name matching"
+      },
+      {
+        "field": "claim_status",
+        "expected": "Claim Sts",
+        "suggested": "Claim Sts",
+        "outcome": "correct",
+        "source": "name matching"
+      }
+    ]
+  },
+  "gemini": {
+    "correct": 12,
+    "wrong": 0,
+    "left_blank": 0,
+    "fields": 12,
+    "details": [
+      {
+        "field": "claim_id",
+        "expected": "Clm_Nbr",
+        "suggested": "Clm_Nbr",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "member_id",
+        "expected": "Subscriber Ref",
+        "suggested": "Subscriber Ref",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "member_dob",
+        "expected": "Patient Birth Dt",
+        "suggested": "Patient Birth Dt",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "provider_npi",
+        "expected": "Rendering NPI",
+        "suggested": "Rendering NPI",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "service_date",
+        "expected": "DOS_From",
+        "suggested": "DOS_From",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "diagnosis_code",
+        "expected": "Primary Dx",
+        "suggested": "Primary Dx",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "procedure_code",
+        "expected": "Svc Code",
+        "suggested": "Svc Code",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "place_of_service",
+        "expected": "POS",
+        "suggested": "POS",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "billed_amount",
+        "expected": "Total Charges",
+        "suggested": "Total Charges",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "allowed_amount",
+        "expected": "Allowed Amt",
+        "suggested": "Allowed Amt",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "paid_amount",
+        "expected": "Plan Paid Amt",
+        "suggested": "Plan Paid Amt",
+        "outcome": "correct",
+        "source": "gemini"
+      },
+      {
+        "field": "claim_status",
+        "expected": "Claim Sts",
+        "suggested": "Claim Sts",
+        "outcome": "correct",
+        "source": "gemini"
+      }
+    ],
+    "model": "gemini-3.5-flash-lite"
+  },
+  "rule_checks": {
+    "planted": 52,
+    "caught": 52,
+    "missed": 0,
+    "false_alarms": 0,
+    "rows_checked": 2000
+  },
+  "evaluated_on": "2026-11-07"
+}
