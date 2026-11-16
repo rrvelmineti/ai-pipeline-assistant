@@ -1,0 +1,471 @@
+{
+  "scenarios": [
+    {
+      "scenario": "A",
+      "title": "Clean file: straight through to go-live and export",
+      "checks": [
+        {
+          "id": "A1",
+          "criterion": "A clean file is validated as Ready with no findings",
+          "expected": "Ready, 0, 0",
+          "actual": "Ready, 0 blockers, 0 warnings",
+          "passed": true
+        },
+        {
+          "id": "A2",
+          "criterion": "Every readiness check passes before approval",
+          "expected": "Ready for approval",
+          "actual": "Ready for approval",
+          "passed": true
+        },
+        {
+          "id": "A3",
+          "criterion": "An analyst cannot approve go-live",
+          "expected": 403,
+          "actual": "403",
+          "passed": true
+        },
+        {
+          "id": "A4",
+          "criterion": "The export loads every record exactly once",
+          "expected": "completed: 600, 600",
+          "actual": "completed: 600 records, 600 distinct",
+          "passed": true
+        },
+        {
+          "id": "A5",
+          "criterion": "The evidence package's SHA-256 manifest matches every file",
+          "expected": "",
+          "actual": "14 files, manifest matches",
+          "passed": true
+        },
+        {
+          "id": "A6",
+          "criterion": "The client shows as Live after the export",
+          "expected": "Live",
+          "actual": "Live",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "B",
+      "title": "Poor-quality file: 2,000 rows with 52 planted errors",
+      "checks": [
+        {
+          "id": "B1",
+          "criterion": "The file is Not ready, with the planted blockers and warnings counted",
+          "expected": "Not ready, 42, 10",
+          "actual": "Not ready, 42 blockers, 10 warnings",
+          "passed": true
+        },
+        {
+          "id": "B2",
+          "criterion": "Every planted error is found at the right line, with no false alarms",
+          "expected": "52 of 52, 0",
+          "actual": "52 of 52 found, 0 false alarms",
+          "passed": true
+        },
+        {
+          "id": "B3",
+          "criterion": "One exception is opened per rule group, each with severity and status",
+          "expected": "14 open groups",
+          "actual": "14 groups, statuses ['open']",
+          "passed": true
+        },
+        {
+          "id": "B4",
+          "criterion": "Go-live cannot be approved while blockers remain",
+          "expected": 409,
+          "actual": "409",
+          "passed": true
+        },
+        {
+          "id": "B5",
+          "criterion": "A blocker cannot be accepted or waived",
+          "expected": 409,
+          "actual": "409",
+          "passed": true
+        },
+        {
+          "id": "B6",
+          "criterion": "A warning can be accepted by an approver with a note, and the change is recorded",
+          "expected": "",
+          "actual": "200, 3 events",
+          "passed": true
+        },
+        {
+          "id": "B7",
+          "criterion": "Nobody can mark an exception resolved by hand",
+          "expected": 409,
+          "actual": "409",
+          "passed": true
+        },
+        {
+          "id": "B8",
+          "criterion": "The client sees the issue letter only once sent, written with their own column names",
+          "expected": "",
+          "actual": "0 before, 1 after sending; client column names used: True",
+          "passed": true
+        },
+        {
+          "id": "B9",
+          "criterion": "A rule-based explanation is always available, even when AI is unavailable",
+          "expected": "",
+          "actual": "6 rows in the column 'Rendering NPI' (platform field provider_npi) break the rule 'exactly",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "C",
+      "title": "Different schema with ambiguous mappings and a rule change",
+      "checks": [
+        {
+          "id": "C1",
+          "criterion": "Ambiguous, low-confidence and missing suggestions are flagged, not hidden",
+          "expected": "",
+          "actual": "{'claim_id': 'none', 'provider_npi': 'ambiguous', 'diagnosis_code': 'none', 'procedure_code': 'low', 'claim_status': 'ambiguous'}",
+          "passed": true
+        },
+        {
+          "id": "C2",
+          "criterion": "A mapping with unconfirmed ambiguous or missing fields cannot be submitted",
+          "expected": 422,
+          "actual": "422: unconfirmed ['claim_id', 'provider_npi', 'diagnosis_code', 'procedure_code', 'claim_status']",
+          "passed": true
+        },
+        {
+          "id": "C3",
+          "criterion": "The analyst's correction of the suggested NPI column is logged",
+          "expected": "",
+          "actual": "{'field': 'provider_npi', 'suggested_column': 'Billing Provider NPI', 'suggested_by': 'name matching', 'chosen_column': 'Servicing Provider NPI'}",
+          "passed": true
+        },
+        {
+          "id": "C4",
+          "criterion": "The analyst who prepared a mapping cannot approve it",
+          "expected": 403,
+          "actual": "403",
+          "passed": true
+        },
+        {
+          "id": "C5",
+          "criterion": "With the baseline rules, the vendor's MM/DD/YYYY dates are blockers",
+          "expected": "",
+          "actual": "Not ready, 1600 blockers",
+          "passed": true
+        },
+        {
+          "id": "C6",
+          "criterion": "The rule change is a new approved version, and it invalidates the earlier validation",
+          "expected": "",
+          "actual": "[(2, 'approved'), (1, 'superseded')]",
+          "passed": true
+        },
+        {
+          "id": "C7",
+          "criterion": "Re-validated under the approved rules, the file is Ready",
+          "expected": "",
+          "actual": "Ready, 0 blockers",
+          "passed": true
+        },
+        {
+          "id": "C8",
+          "criterion": "The configuration change is traceable: who drafted, what changed, who approved",
+          "expected": "",
+          "actual": "{'added': [], 'removed': [], 'changed': ['member_dob', 'service_date']}",
+          "passed": true
+        },
+        {
+          "id": "C9",
+          "criterion": "A saved template is reused for the same layout with high confidence",
+          "expected": "",
+          "actual": "Cedar vendor extract layout",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "D",
+      "title": "Multiple resubmissions: fixed, unresolved, new and regressed problems",
+      "checks": [
+        {
+          "id": "D1",
+          "criterion": "Resubmission 2 is compared with 1: fixed, new and still-unresolved problems",
+          "expected": "",
+          "actual": "{'fixed': ['claim_status: one of paid / denied / pending / adjusted', 'provider_npi: exactly 10 digits'], 'new': ['member_dob: not in the future', 'service_date: not before member_dob'], 'unresolved': ['paid_amount: not greater than billed_amount', 'place_of_service: exactly 2 digits']}",
+          "passed": true
+        },
+        {
+          "id": "D2",
+          "criterion": "Exceptions absent from the resubmission are resolved automatically",
+          "expected": "",
+          "actual": "NPI resolved: Not found in submission #2 (run 6).",
+          "passed": true
+        },
+        {
+          "id": "D3",
+          "criterion": "A problem that comes back is reopened, with its history kept",
+          "expected": "",
+          "actual": "['created', 'auto_resolved', 'reopened']",
+          "passed": true
+        },
+        {
+          "id": "D4",
+          "criterion": "Ready only after a file with no blockers, with every exception resolved",
+          "expected": "",
+          "actual": "round 3 approval 409; round 4 Ready, 0 open",
+          "passed": true
+        },
+        {
+          "id": "D5",
+          "criterion": "The scorecard reports rounds to acceptance and rework from the records",
+          "expected": "",
+          "actual": "rounds 4, first pass False, rework 0.75",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "E",
+      "title": "Operational failure: duplicates, failed and interrupted runs, bad files, downstream outage",
+      "checks": [
+        {
+          "id": "E1",
+          "criterion": "Uploading the same file twice stores it once",
+          "expected": "",
+          "actual": "duplicate=True, 1 submission(s)",
+          "passed": true
+        },
+        {
+          "id": "E2",
+          "criterion": "When AI is unavailable, mapping falls back to name matching and says so",
+          "expected": "",
+          "actual": "Gemini is not configured on this server (set GEMINI_API_KEY and GEMINI_MODEL). N",
+          "passed": true
+        },
+        {
+          "id": "E3",
+          "criterion": "A failed run is recorded and a retry completes with the full result",
+          "expected": "",
+          "actual": "failed -> completed after 2 attempts",
+          "passed": true
+        },
+        {
+          "id": "E4",
+          "criterion": "A run interrupted mid-processing is marked interrupted on recovery and retried without loss",
+          "expected": "",
+          "actual": "running -> interrupted -> completed",
+          "passed": true
+        },
+        {
+          "id": "E5",
+          "criterion": "A file cut off mid-row is caught as a blocker on the broken row",
+          "expected": "",
+          "actual": "Not ready, 1 broken row",
+          "passed": true
+        },
+        {
+          "id": "E6",
+          "criterion": "A file that cannot be read to the end is never ready, and nothing is cleared by the partial scan",
+          "expected": "",
+          "actual": "scan_complete=False, stage Remediation",
+          "passed": true
+        },
+        {
+          "id": "E7",
+          "criterion": "Re-sending the good file recovers: Ready, and the file-level problems resolve",
+          "expected": "",
+          "actual": "submission #4 Ready",
+          "passed": true
+        },
+        {
+          "id": "E8",
+          "criterion": "A downstream outage fails the export cleanly, keeping the batches already delivered",
+          "expected": "",
+          "actual": "failed after 1 of 3 batches: Batch 2 of 3 failed after 3 attempts: The downstream system did not re",
+          "passed": true
+        },
+        {
+          "id": "E9",
+          "criterion": "The resumed export, with a lost acknowledgement, loads every claim exactly once",
+          "expected": "",
+          "actual": "completed: 1500 records, 1500 distinct, 3 batch retries",
+          "passed": true
+        },
+        {
+          "id": "E10",
+          "criterion": "Asking to export again returns the same export and loads nothing twice",
+          "expected": "",
+          "actual": "existing=True, 1500 records",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "F",
+      "title": "Security boundaries: client separation, roles, sessions and audit",
+      "checks": [
+        {
+          "id": "F1",
+          "criterion": "A client contact sees only their own client",
+          "expected": [
+            "B-BIRCH"
+          ],
+          "actual": "['B-BIRCH']",
+          "passed": true
+        },
+        {
+          "id": "F2",
+          "criterion": "Another client's records look exactly like records that do not exist (404)",
+          "expected": "",
+          "actual": "[404, 404, 404, 404, 404]",
+          "passed": true
+        },
+        {
+          "id": "F3",
+          "criterion": "An analyst without access to a client cannot read or upload to it",
+          "expected": "",
+          "actual": "[404, 404]",
+          "passed": true
+        },
+        {
+          "id": "F4",
+          "criterion": "A client contact cannot approve, change status, or read audit and evidence, but can add notes",
+          "expected": "",
+          "actual": "{'approve go-live': 403, 'change exception status': 403, 'read audit': 403, 'download evidence': 403, 'read mappings': 403, 'add note': 200}",
+          "passed": true
+        },
+        {
+          "id": "F5",
+          "criterion": "Requests without a valid session are refused (401)",
+          "expected": "",
+          "actual": "[401, 401]",
+          "passed": true
+        },
+        {
+          "id": "F6",
+          "criterion": "Five wrong passwords lock the account, even against the right password, until unlocked",
+          "expected": "",
+          "actual": "[401, 401, 401, 401, 401] then 423; after unlock 200",
+          "passed": true
+        },
+        {
+          "id": "F7",
+          "criterion": "Nobody approves their own change, not even an administrator (four-eyes)",
+          "expected": 403,
+          "actual": "403",
+          "passed": true
+        },
+        {
+          "id": "F8",
+          "criterion": "Signing out ends the session",
+          "expected": 401,
+          "actual": "401",
+          "passed": true
+        },
+        {
+          "id": "F9",
+          "criterion": "Weak passwords are refused",
+          "expected": 422,
+          "actual": "422",
+          "passed": true
+        },
+        {
+          "id": "F10",
+          "criterion": "The hash-chained audit trail verifies end to end",
+          "expected": "",
+          "actual": "130 entries",
+          "passed": true
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "planted_error_recall": {
+    "planted": 52,
+    "caught": 52,
+    "missed": 0,
+    "false_alarms": 0,
+    "rows_checked": 2000
+  },
+  "portfolio_kpis": [
+    {
+      "name": "First-pass acceptance rate",
+      "value": 0.6,
+      "n": 5,
+      "definition": "Clients whose first validated file was Ready \u00f7 clients with a validated file."
+    },
+    {
+      "name": "Mean rounds to acceptance",
+      "value": 1.75,
+      "n": 4,
+      "definition": "Submissions up to and including the first Ready file, for clients that reached Ready."
+    },
+    {
+      "name": "Rework rate",
+      "value": 0.545,
+      "n": 11,
+      "definition": "Validated submissions that were Not ready \u00f7 all validated submissions."
+    },
+    {
+      "name": "Median hours to resolve an exception",
+      "value": 0.0,
+      "n": 10,
+      "definition": "From the run that opened an exception group to the run that no longer contained it."
+    },
+    {
+      "name": "Validation runs completed on first attempt",
+      "value": 0.846,
+      "n": 13,
+      "definition": "Completed runs with one attempt \u00f7 runs that finished (completed or failed)."
+    },
+    {
+      "name": "Exports completed",
+      "value": 1.0,
+      "n": 2,
+      "definition": "Completed exports \u00f7 exports requested."
+    }
+  ],
+  "processing": {
+    "total": 13,
+    "by_status": {
+      "completed": 13
+    },
+    "finished": 13,
+    "retried": 2,
+    "first_attempt_success_rate": 0.846,
+    "median_ms": 68,
+    "p95_ms": 128,
+    "max_ms": 130,
+    "rows_validated": 13000,
+    "rows_per_second": 14412,
+    "largest_file_rows": 2000
+  },
+  "performance": {
+    "rows": 100000,
+    "file_mb": 12.6,
+    "upload_seconds": 0.18,
+    "validation_seconds": 5.5,
+    "validation_rows_per_second": 18182,
+    "decision": "Ready",
+    "export_status": "completed",
+    "export_seconds": 3.82,
+    "export_batches": 200,
+    "records_loaded": 100000,
+    "distinct_claim_ids": 100000
+  },
+  "checks_passed": 49,
+  "checks_total": 49,
+  "seconds": 14.2,
+  "database": "sqlite",
+  "evaluated_on": "2026-11-15",
+  "platform_version": "1.0.0",
+  "machine": "Python 3.13.18 on Linux"
+}

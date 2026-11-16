@@ -1,0 +1,37 @@
+# Local pilot stack: the platform and PostgreSQL 16.
+#   1. Create a .env file next to this one with:
+#        CLAIMS_ENCRYPTION_KEY=<python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+#        POSTGRES_PASSWORD=<a long random string>
+#   2. docker compose up --build
+#   3. docker compose exec app python -m claims_platform.cli create-admin admin
+# Synthetic data only. This pilot is not HIPAA-compliant.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: claims
+      POSTGRES_USER: claims
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claims -d claims"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CLAIMS_DATABASE_URL: postgresql+psycopg://claims:${POSTGRES_PASSWORD}@db:5432/claims
+      CLAIMS_ENCRYPTION_KEY: ${CLAIMS_ENCRYPTION_KEY:?set CLAIMS_ENCRYPTION_KEY in .env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - files:/data/files
+volumes:
+  pgdata:
+  files:

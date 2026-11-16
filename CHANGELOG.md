@@ -1,3 +1,14 @@
+# Claims Onboarding and Exception Management Platform, pilot v1.0
+
+- Add `claims_platform`: a FastAPI service with sign-in, four roles, client separation, encryption at rest and a hash-chained audit trail, on PostgreSQL or SQLite.
+- Add versioned per-client rules with four-eyes approval; mapping suggestions with confidence levels, abstention, required confirmation, approval and reusable templates.
+- Add validation runs with retry and crash recovery, an exception register tracked across resubmissions (resolve, reopen, accept warnings with a reason), readiness checks that block go-live while blockers remain, and go-live approval.
+- Add export to a simulated downstream system with idempotent, resumable batches; scorecards, portfolio KPIs, processing metrics, the evidence package, client letters, AI explanations with a rule-based fallback, and an implementation timeline.
+- Add `claims_platform_web`: React + TypeScript interface with the five screens.
+- Add scenarios A–F and a 100,000-row performance run (`evaluation/platform_scenarios.py`), 41 platform tests, 8 interface tests, and the platform documentation set in `docs/platform/`.
+- Add a Dockerfile and a compose file with PostgreSQL. CI now also tests on PostgreSQL and builds and tests the interface.
+- Refactor `claims_onboarding.mapping` to expose `score_heading`; behaviour unchanged.
+
 # Claims onboarding: client handoff
 
 - Add a client issue letter: findings grouped by rule in the client's own column names, with up to 5 example lines and how to fix each. Written by code from the verified report.
