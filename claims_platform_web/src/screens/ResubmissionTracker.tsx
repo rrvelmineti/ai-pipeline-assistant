@@ -13,7 +13,7 @@ function Group({ title, tone, items }: { title: string; tone: "pass" | "blocker"
         <ul>
           {items.map((g) => (
             <li key={`${g.field}-${g.rule}`}>
-              {g.field}: {g.rule} <span className="faint">({n(g.before)} to {n(g.after)} rows)</span>
+              {g.field}: {g.rule} <span className="faint">({n(g.before)} to {plural(g.after, "row")})</span>
             </li>
           ))}
         </ul>
