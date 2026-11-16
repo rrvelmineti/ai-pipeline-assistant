@@ -1,5 +1,8 @@
 # Claims Data Onboarding Assistant: case study
 
+> This assistant's engine now also powers the multi-client
+> [Claims Onboarding and Exception Management Platform](../platform/README.md).
+
 A health insurer is onboarding a new client's claims file. This tool takes the client's raw
 extract to a go-live decision: AI suggests how the client's columns map to the platform's
 fields, the analyst approves or corrects each one, code checks every row against

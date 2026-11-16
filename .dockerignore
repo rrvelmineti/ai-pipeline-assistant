@@ -1,0 +1,8 @@
+.git
+**/__pycache__
+**/node_modules
+claims_platform_web/dist
+local_data
+.env
+.env.*
+*.db

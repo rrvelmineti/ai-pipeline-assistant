@@ -1,6 +1,27 @@
 # AI Pipeline Assistant · claims onboarding and CSV review
 
-Two tools for the work an implementation team does when a new client's data arrives.
+Tools for the work an implementation team does when a new client's data arrives.
+
+## Claims Onboarding and Exception Management Platform (pilot v1.0)
+
+A multi-client web platform (FastAPI, PostgreSQL, React + TypeScript) that takes each new health
+plan client's claims extract from first upload to an approved go-live and a clean load downstream.
+Analysts, approvers and client data contacts sign in with their own roles; each client's work is
+separate. Mappings carry confidence levels and anything uncertain must be confirmed; rules are
+versioned; every row is checked by code; exceptions are tracked across resubmissions; nobody
+approves their own work; the audit trail is hash-chained; exports never load a claim twice.
+
+**Measured on synthetic data (15 Nov 2026):** all 49 scenario checks (A–F) pass on SQLite and
+PostgreSQL 16; the 52 planted errors in the 2,000-row sample are all found with no false alarms;
+a 100,000-row file validates in about 5 seconds. No time saving is claimed: a manual baseline has
+not been measured yet. **Synthetic data only; this pilot is not HIPAA-compliant.**
+
+[Platform guide](docs/platform/README.md) · [requirements](docs/platform/brd.md) ·
+[architecture](docs/platform/architecture.md) · [traceability](docs/platform/traceability.md) ·
+[security and risk](docs/platform/security-and-risk.md) · [demo script](docs/platform/demo.md)
+
+    python -m claims_platform.cli seed-demo   # synthetic clients A–F
+    python -m claims_platform.cli serve       # http://127.0.0.1:8000
 
 ## Claims Data Onboarding Assistant: the implementation case
 

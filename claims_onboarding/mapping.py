@@ -45,23 +45,31 @@ def _words(text):
     return set(words)
 
 
+def score_heading(field, heading):
+    """Word-overlap score between one target field and one client heading, or None if they do not match.
+
+    Returns (score, overlapping words). A score of 1.0 means the heading covers the field's words exactly.
+    """
+    target = FIELD_WORDS.get(field, set(field.split("_")))
+    words = _words(heading)
+    overlap = target & words
+    if not overlap:
+        return None
+    # The distinctive word (not generic id/code/amount/date) must match.
+    distinctive = target - {"id", "code", "amount", "date", "of"}
+    if distinctive and not distinctive & words:
+        return None
+    # Reward covering the field's words; lightly penalise extra words in the heading.
+    return len(overlap) / len(target) - 0.05 * len(words - target), sorted(overlap)
+
+
 def heuristic_suggest(headers, specs):
     """Score word overlap between each heading and each field, then assign best pairs first."""
     scored = []
     for f in specs:
-        target = FIELD_WORDS.get(f, set(f.split("_")))
         for h in headers:
-            words = _words(h)
-            overlap = target & words
-            if not overlap:
-                continue
-            # Reward covering the field's words; lightly penalise extra words in the heading.
-            score = len(overlap) / len(target) - 0.05 * len(words - target)
-            # The distinctive word (not generic id/code/amount/date) must match.
-            distinctive = target - {"id", "code", "amount", "date", "of"}
-            if distinctive and not distinctive & words:
-                continue
-            scored.append((score, f, h, sorted(overlap)))
+            if (match := score_heading(f, h)) is not None:
+                scored.append((match[0], f, h, match[1]))
     scored.sort(key=lambda s: -s[0])
     chosen, used = {}, set()
     for score, f, h, overlap in scored:
