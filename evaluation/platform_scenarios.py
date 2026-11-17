@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 
 from claims_platform import __version__
 from claims_platform.app import create_app
-from claims_platform.cli import ensure_admin
+from claims_platform.bootstrap import ensure_admin
 from claims_platform.config import Settings
 from claims_platform.db import Base
 from claims_platform.scenarios import ai_unavailable, run_all

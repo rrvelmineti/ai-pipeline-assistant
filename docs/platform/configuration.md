@@ -5,9 +5,12 @@
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `CLAIMS_DATABASE_URL` | `sqlite:///local_data/claims_platform.db` | SQLAlchemy URL. Use PostgreSQL outside a laptop: `postgresql+psycopg://user:pass@host:5432/claims` |
-| `CLAIMS_ENCRYPTION_KEY` | none | Fernet key for files and sensitive values. **Required** unless `CLAIMS_ENV=development` |
+| `CLAIMS_ENCRYPTION_KEY` | none | Fernet key, or any secret of 32+ characters (turned into a key with SHA-256), for files and sensitive values. A comma-separated list rotates keys. **Required** unless `CLAIMS_ENV=development` |
 | `CLAIMS_ENV` | `development` | Anything else turns off the development key file and requires `CLAIMS_ENCRYPTION_KEY` |
 | `CLAIMS_STORAGE_DIR` | `local_data/platform_files` | Where encrypted uploads are kept |
+| `CLAIMS_FILE_STORE` | `disk` | `disk` keeps encrypted uploads in `CLAIMS_STORAGE_DIR`; `database` keeps them in the database, for hosts whose disk is wiped on restart |
+| `CLAIMS_SEED_DEMO` | `0` | `1` loads the synthetic demo in the background on the first start (empty database), using `CLAIMS_DEMO_PASSWORD` |
+| `PORT` | `8000` | Port the container listens on (set by hosts such as Render) |
 | `CLAIMS_SESSION_HOURS` | `8` | Session lifetime |
 | `CLAIMS_LOCKOUT_ATTEMPTS` | `5` | Failed sign-ins before a lock |
 | `CLAIMS_LOCKOUT_MINUTES` | `15` | Lock duration |
@@ -16,8 +19,8 @@
 | `CLAIMS_SIMULATION` | `1` | Enables the fault-injection endpoint used by scenario E. **Set to `0` in any shared environment** (the Docker image does) |
 | `CLAIMS_WEB_DIST` | `claims_platform_web/dist` | Built interface to serve |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | none | Optional. Without them, AI mapping suggestions and AI rewording are unavailable and everything else works |
-| `CLAIMS_ADMIN_PASSWORD` | none | Used by `cli create-admin` when not run interactively |
-| `CLAIMS_DEMO_PASSWORD` | random | Password for every demo user created by `cli seed-demo` |
+| `CLAIMS_ADMIN_PASSWORD` | none | Used by `cli create-admin` when not run interactively, and at start-up to create `admin` when the database is empty and no demo is loaded |
+| `CLAIMS_DEMO_PASSWORD` | random | Password for every demo user created by `cli seed-demo` or by `CLAIMS_SEED_DEMO=1` |
 
 Generate an encryption key:
 
@@ -39,6 +42,10 @@ python -m claims_platform.cli serve --host 0.0.0.0 --port 8000
 Then, signed in as the administrator, create users (`POST /api/users`), and give each user access to
 their clients (`POST /api/clients/{id}/access`). Analysts who create a client get access
 automatically. The API reference is at `/api/docs`.
+
+## Render (free tier)
+
+See [deploy-render.md](deploy-render.md): one click with the Blueprint in `render.yaml`.
 
 ## Docker with PostgreSQL
 

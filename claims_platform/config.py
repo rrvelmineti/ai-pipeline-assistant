@@ -30,3 +30,19 @@ class Settings:
         "CLAIMS_WEB_DIST", ROOT / "claims_platform_web" / "dist")))
     # Development only: create a key file next to the database when no key is configured.
     allow_dev_key: bool = field(default_factory=lambda: os.environ.get("CLAIMS_ENV", "development") == "development")
+    # "disk" keeps encrypted uploads in storage_dir; "database" keeps them in the database, for hosts whose
+    # disk is wiped on restart (such as Render's free tier).
+    file_store: str = field(default_factory=lambda: os.environ.get("CLAIMS_FILE_STORE", "disk"))
+    # On an empty database at start-up: load the synthetic demo (scenarios A–F) in the background, using
+    # demo_password for every demo user; or, if not seeding, create the user 'admin' with admin_password.
+    seed_demo: bool = field(default_factory=lambda: os.environ.get("CLAIMS_SEED_DEMO", "0") == "1")
+    demo_password: str = field(default_factory=lambda: os.environ.get("CLAIMS_DEMO_PASSWORD", ""))
+    admin_password: str = field(default_factory=lambda: os.environ.get("CLAIMS_ADMIN_PASSWORD", ""))
+
+
+def normalise_database_url(url):
+    """Hosts such as Render hand out postgres:// or postgresql:// URLs; SQLAlchemy needs the driver named."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url

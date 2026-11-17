@@ -23,6 +23,9 @@ not been measured yet. **Synthetic data only; this pilot is not HIPAA-compliant.
     python -m claims_platform.cli seed-demo   # synthetic clients A–F
     python -m claims_platform.cli serve       # http://127.0.0.1:8000
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rrvelmineti/ai-pipeline-assistant)
+([free-tier notes](docs/platform/deploy-render.md))
+
 ## Claims Data Onboarding Assistant: the implementation case
 
 **Client problem.** A new health insurance client must send its claims before go-live. The extract

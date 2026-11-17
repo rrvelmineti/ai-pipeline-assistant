@@ -12,7 +12,7 @@ from .config import Settings
 from .db import Base, make_engine, make_session_factory
 from .processing import recover_interrupted
 from .security import load_cipher
-from .storage import FileStore
+from .storage import make_store
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
        "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
@@ -31,13 +31,15 @@ def create_app(settings=None):
             recovered = recover_interrupted(db)
             db.commit()
         app.state.recovered_at_startup = recovered
+        from .bootstrap import bootstrap
+        app.state.seed_thread = bootstrap(settings, Session)
         yield
         engine.dispose()
 
     app = FastAPI(title="Claims Onboarding and Exception Management Platform", version=__version__,
                   lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
     app.state.settings, app.state.engine, app.state.Session = settings, engine, Session
-    app.state.cipher, app.state.store = cipher, FileStore(settings.storage_dir, cipher)
+    app.state.cipher, app.state.store = cipher, make_store(settings, Session, cipher)
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
