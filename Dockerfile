@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY claims_onboarding/ claims_onboarding/
 COPY orders_assistant/ orders_assistant/
 COPY claims_platform/ claims_platform/
+# The synthetic sample file and its answer key: the demo loader (scenario B) reads them.
+COPY examples/claims/ examples/claims/
 COPY --from=web /web/dist claims_platform_web/dist
 RUN useradd --create-home --uid 10001 app && mkdir -p /data/files && chown -R app /data
 USER app

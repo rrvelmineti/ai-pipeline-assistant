@@ -75,6 +75,18 @@ jobs:
         run: python -m unittest discover -s tests -p "test_platform*" -v
       - name: Run scenarios A–F and the 100,000-row performance check on PostgreSQL
         run: python -m evaluation.platform_scenarios --performance --database-url "$CLAIMS_TEST_DATABASE_URL"
+      - name: Load the demo from only the files the container image contains
+        # Copies each `COPY src/ src/` path from the Dockerfile, as the image does, and loads the demo there,
+        # so a file the app needs at run time cannot be left out of the image unnoticed.
+        run: |
+          image=$(mktemp -d)
+          awk '$1 == "COPY" && $2 == $3 {print $2}' Dockerfile | while read -r path; do
+            mkdir -p "$image/$path" && cp -r "$path"/. "$image/$path"
+          done
+          cd "$image"
+          CLAIMS_DATABASE_URL="sqlite:///$image/demo.db" CLAIMS_STORAGE_DIR="$image/files" \
+          CLAIMS_ENCRYPTION_KEY=ci-only-layout-check-secret-0123456789 CLAIMS_DEMO_PASSWORD=Layout-Check-Pass-1 \
+          python -m claims_platform.cli seed-demo
 
   web:
     name: Interface (Node 22)

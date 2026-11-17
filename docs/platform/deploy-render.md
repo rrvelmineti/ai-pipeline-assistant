@@ -28,6 +28,10 @@ HIPAA-compliant.
 
 Pushes to `main` redeploy automatically.
 
+If `/api/health` shows `"demo": "failed"`, the service's **Logs** tab has the reason. After a fix is
+deployed, the app clears the half-loaded demo and loads it again on its next start, but only if the
+database holds nothing except demo users and demo clients; real work is never cleared.
+
 ## What the free tier means for this app
 
 | Free-tier behaviour | Effect here |

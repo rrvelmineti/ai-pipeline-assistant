@@ -9,11 +9,12 @@ from dataclasses import replace
 
 from sqlalchemy import select
 
-from .db import utcnow
-from .models import Setting, User
+from .db import Base, utcnow
+from .models import Client, Setting, User
 from .security import check_password_strength, hash_password
 
 STATUS_KEY = "demo_seed"
+DEMO_CLIENTS = {"A-ASTER", "B-BIRCH", "C-CEDAR", "C2-CEDAR-WEST", "D-DOGWOOD", "E-ELM", "F-FIR", "P-PERF"}
 
 
 def ensure_admin(Session, username, password, display_name="Administrator"):
@@ -78,11 +79,33 @@ def _seed_in_background(settings, Session):
         print(f"claims_platform: demo seeding failed: {type(exc).__name__}: {exc}", flush=True)
 
 
-def bootstrap(settings, Session):
-    """Returns the seeding thread when one was started (tests join it), otherwise None."""
+def _only_an_unfinished_demo(Session):
+    """True when an earlier demo load stopped part-way (failed, or the process stopped while it ran) and the
+    database holds nothing but demo users and demo clients, so it is safe to start the demo again."""
+    from .scenarios import TEAM
+    if demo_status(Session) not in ("failed", "running"):
+        return False
     with Session() as db:
-        if db.execute(select(User.id).limit(1)).first():
-            return None
+        users = set(db.execute(select(User.username)).scalars())
+        clients = set(db.execute(select(Client.code)).scalars())
+    return users <= {"admin", *(u for u, _, _ in TEAM)} and clients <= DEMO_CLIENTS
+
+
+def bootstrap(settings, Session, engine=None):
+    """Returns the seeding thread when one was started (tests join it), otherwise None.
+
+    Runs at start-up, when nothing else in this single-process app can be loading the demo.
+    """
+    with Session() as db:
+        has_users = db.execute(select(User.id).limit(1)).first() is not None
+    if has_users and settings.seed_demo and engine is not None and _only_an_unfinished_demo(Session):
+        print("claims_platform: the last demo load did not finish; clearing the demo data and loading it again.",
+              flush=True)
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
+        has_users = False
+    if has_users:
+        return None
     if settings.seed_demo:
         if not settings.demo_password:
             print("claims_platform: CLAIMS_SEED_DEMO is set but CLAIMS_DEMO_PASSWORD is empty; not seeding.", flush=True)
