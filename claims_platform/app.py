@@ -32,7 +32,7 @@ def create_app(settings=None):
             db.commit()
         app.state.recovered_at_startup = recovered
         from .bootstrap import bootstrap
-        app.state.seed_thread = bootstrap(settings, Session)
+        app.state.seed_thread = bootstrap(settings, Session, engine)
         yield
         engine.dispose()
 

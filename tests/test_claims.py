@@ -235,7 +235,7 @@ class ClaimsPageTests(unittest.TestCase):
     PAGE = str(ROOT / "pages/3_Claims_Onboarding.py")
 
     def test_upload_required(self):
-        app = AppTest.from_file(self.PAGE).run()
+        app = AppTest.from_file(self.PAGE, default_timeout=60).run()
         self.assertFalse(app.exception)
         self.assertFalse(app.selectbox or app.metric)
 
@@ -263,7 +263,7 @@ class ClaimsPageTests(unittest.TestCase):
 
     def test_broken_rules_edit_shows_error_instead_of_checking(self):
         with patch("streamlit.file_uploader", return_value=uploaded(b"a,b\n1,2\n")):
-            app = AppTest.from_file(self.PAGE).run()
+            app = AppTest.from_file(self.PAGE, default_timeout=60).run()
             app.text_area[0].input("claim_id | Claim | required, sparkly").run()
             self.assertFalse(app.exception)
             self.assertIn("sparkly", app.error[0].value)

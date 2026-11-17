@@ -82,5 +82,51 @@ class BootstrapTests(unittest.TestCase):
                              if p.settings.simulation_enabled else 404)
 
 
+class DemoRepairTests(unittest.TestCase):
+    """A demo load that stops part-way must not leave a host stuck with half a demo."""
+
+    def _fail_first_load(self, p):
+        from unittest.mock import patch
+        with patch("claims_platform.scenarios.EXAMPLE", Path(p.temp.name) / "missing"):
+            p.app.state.seed_thread.join(timeout=300)
+        self.assertEqual(p.client.get("/api/health").json()["demo"], "failed")
+
+    def _restart(self, p):
+        from fastapi.testclient import TestClient
+        from claims_platform.app import create_app
+        app = create_app(p.settings)
+        try:
+            with TestClient(app) as client:
+                if app.state.seed_thread is not None:
+                    app.state.seed_thread.join(timeout=300)
+                return client.get("/api/health").json()["demo"], app.state.seed_thread is not None
+        finally:
+            app.state.engine.dispose()
+
+    def test_an_unfinished_demo_is_cleared_and_loaded_again(self):
+        with Platform(create_admin=False, seed_demo=True, demo_password=PASSWORD, file_store="database") as p:
+            self._fail_first_load(p)
+            with p.Session() as db:
+                self.assertGreater(db.execute(select(func.count(User.id))).scalar(), 0)   # partly loaded
+            status, reseeded = self._restart(p)
+            self.assertEqual((status, reseeded), ("ready", True))
+            api = Api(p.client)
+            api.login("priya", PASSWORD)
+            self.assertEqual(len(api.ok("GET", "priya", "/api/clients")), 7)
+
+    def test_real_work_is_never_cleared(self):
+        from claims_platform.security import hash_password
+        with Platform(create_admin=False, seed_demo=True, demo_password=PASSWORD, file_store="database") as p:
+            self._fail_first_load(p)
+            with p.Session() as db:
+                db.add(User(username="real.analyst", display_name="Real analyst", role="implementation_analyst",
+                            password_hash=hash_password(PASSWORD)))
+                db.commit()
+            status, reseeded = self._restart(p)
+            self.assertEqual((status, reseeded), ("failed", False))
+            with p.Session() as db:
+                self.assertIsNotNone(db.execute(select(User).where(User.username == "real.analyst")).scalar_one_or_none())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,9 @@
+# Fix the demo load on Render
+
+- The container image now includes `examples/claims/` (the synthetic sample the demo loader reads); without it the first demo load on Render failed.
+- On start-up, a demo load that stopped part-way is cleared and run again, but only when the database holds nothing but demo users and clients.
+- CI loads the demo from only the files the image contains, so a missing file is caught before deployment.
+
 # Deploy the claims platform on Render's free tier
 
 - Add `render.yaml`: a free Docker web service and a free PostgreSQL 16 database, with generated secrets.
