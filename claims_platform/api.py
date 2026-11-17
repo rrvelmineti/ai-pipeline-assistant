@@ -199,9 +199,10 @@ def state_of(request):
 # --- auth --------------------------------------------------------------------------------------------
 
 @router.get("/health")
-def health(db=Depends(get_db)):
+def health(request: Request, db=Depends(get_db)):
     db.execute(select(1))
-    return {"status": "ok", "version": __version__}
+    from .bootstrap import demo_status
+    return {"status": "ok", "version": __version__, "demo": demo_status(state_of(request).Session)}
 
 
 @router.post("/auth/login")

@@ -17,10 +17,10 @@ import sys
 
 from sqlalchemy import func, select
 
+from .bootstrap import ensure_admin, seed_demo
 from .config import Settings
 from .db import Base, make_engine, make_session_factory
 from .models import User
-from .security import check_password_strength, hash_password
 
 
 def _session(settings):
@@ -29,31 +29,17 @@ def _session(settings):
     return engine, make_session_factory(engine)
 
 
-def ensure_admin(Session, username, password, display_name="Administrator"):
-    check_password_strength(password)
-    from . import audit
-    with Session() as db:
-        if db.execute(select(User).where(User.username == username)).scalar_one_or_none():
-            return False
-        u = User(username=username, display_name=display_name, role="admin", password_hash=hash_password(password))
-        db.add(u)
-        db.flush()
-        audit.record(db, None, "user.created", entity="user", entity_id=u.id,
-                     detail={"username": username, "role": "admin", "via": "cli"})
-        db.commit()
-        return True
-
-
 def rotate_key(Session, settings):
     """Re-encrypt stored files and values under the newest key. Safe to run twice."""
     from pathlib import Path
 
-    from .models import Communication, DownstreamRecord, Finding
+    from .models import Communication, DownstreamRecord, Finding, StoredFile
     from .security import load_cipher
     cipher = load_cipher(settings)
     counts = {}
     with Session() as db:
-        for model, column in ((Finding, "entered_enc"), (Communication, "body_enc"), (DownstreamRecord, "payload_enc")):
+        for model, column in ((Finding, "entered_enc"), (Communication, "body_enc"),
+                              (DownstreamRecord, "payload_enc"), (StoredFile, "data")):
             n = 0
             for row in db.execute(select(model)).scalars():
                 setattr(row, column, cipher.rotate(getattr(row, column)))
@@ -127,13 +113,8 @@ def main(argv=None):
                 if db.execute(select(func.count(User.id))).scalar():
                     raise SystemExit("seed-demo needs an empty database. Point CLAIMS_DATABASE_URL at a new one.")
             password = os.environ.get("CLAIMS_DEMO_PASSWORD") or ("Demo-" + secrets.token_urlsafe(9))
-            ensure_admin(Session, "admin", password)
-            from fastapi.testclient import TestClient
-
-            from .app import create_app
-            from .scenarios import TEAM, run_all
-            with TestClient(create_app(settings)) as client:
-                results, _ = run_all(client, password, password, include_performance=args.performance)
+            from .scenarios import TEAM
+            results = seed_demo(settings, password, performance=args.performance)
             print(f"Loaded scenarios A–F: {results['checks_passed']} of {results['checks_total']} checks passed.")
             print("Demo users (synthetic data only): admin, " + ", ".join(u for u, _, _ in TEAM))
             if not os.environ.get("CLAIMS_DEMO_PASSWORD"):

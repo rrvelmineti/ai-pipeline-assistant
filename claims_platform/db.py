@@ -16,6 +16,8 @@ def utcnow():
 
 
 def make_engine(url):
+    from .config import normalise_database_url
+    url = normalise_database_url(url)
     if url.startswith("sqlite"):
         engine = create_engine(url, connect_args={"check_same_thread": False, "timeout": 30})
 

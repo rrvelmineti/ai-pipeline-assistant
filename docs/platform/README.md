@@ -46,6 +46,10 @@ baseline has been measured yet ([how to measure one](business-case.md#measuring-
 
 ## Run it
 
+On Render's free tier: [deploy-render.md](deploy-render.md) (one click with `render.yaml`).
+
+Locally:
+
 Python 3.10+ and Node 20+.
 
 ```bash
@@ -78,6 +82,7 @@ cd claims_platform_web && npm test
 | [Process maps: current and future state](process-maps.md) | Implementation lead, operations |
 | [Architecture](architecture.md) | Engineering, security review |
 | [Configuration](configuration.md) | Administrators, deployment |
+| [Deploy to Render](deploy-render.md) | Hosting the demo on Render's free tier |
 | [Security and risk assessment](security-and-risk.md) | Security, compliance |
 | [Runbooks](runbooks.md) | Support and operations |
 | [UAT report](uat-report.md) and [traceability matrix](traceability.md) | Testers, approvers |

@@ -136,6 +136,6 @@ See the [security and risk assessment](security-and-risk.md) for what these cont
   start-up recovery assumes it is the only worker. More workers need a job queue with leases
   (for example PostgreSQL `SKIP LOCKED` or Redis) and recovery based on lease expiry.
 - **Schema by `create_all`.** There are no migrations yet; adopt Alembic before the first schema change in production.
-- **File storage on local disk.** Use object storage with server-side encryption and a key manager in production.
+- **File storage on local disk or in the database.** The database option suits small hosted demos; use object storage with server-side encryption and a key manager in production.
 - **Findings detail cap.** All findings are counted, but the first 5,000 per run are stored with their values (as in the engine).
 - **Simulated downstream.** The receiver lives in the same database. A real integration needs its own contract and reconciliation.

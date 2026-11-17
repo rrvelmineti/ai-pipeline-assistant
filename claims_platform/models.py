@@ -117,6 +117,15 @@ class Submission(Base):
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class StoredFile(Base):
+    """An uploaded file, encrypted, kept in the database (CLAIMS_FILE_STORE=database)."""
+    __tablename__ = "stored_files"
+    key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class ValidationRun(Base):
     __tablename__ = "validation_runs"
     id: Mapped[int] = mapped_column(primary_key=True)

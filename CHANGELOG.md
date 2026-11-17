@@ -1,3 +1,11 @@
+# Deploy the claims platform on Render's free tier
+
+- Add `render.yaml`: a free Docker web service and a free PostgreSQL 16 database, with generated secrets.
+- Add `CLAIMS_FILE_STORE=database` so uploads survive hosts whose disk is wiped on restart; `rotate-key` covers it.
+- Load the synthetic demo (or create the first administrator) automatically on the first start, for hosts without a shell; `/api/health` reports the demo's status.
+- Accept host-style `postgres://` URLs and any 32+ character secret as the encryption key; the container listens on `$PORT`.
+- Add `tests/test_platform_deploy.py` and `docs/platform/deploy-render.md`.
+
 # Claims Onboarding and Exception Management Platform, pilot v1.0
 
 - Add `claims_platform`: a FastAPI service with sign-in, four roles, client separation, encryption at rest and a hash-chained audit trail, on PostgreSQL or SQLite.
