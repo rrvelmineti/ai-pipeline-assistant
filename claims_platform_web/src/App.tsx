@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, hasToken, setToken, whenSignedOut } from "./api";
+import { Poster, avatarStyle, glyph } from "./components/Poster";
 import { StageTrack } from "./components/StageTrack";
 import { Message, useAction, useLoad } from "./components/ui";
 import { ROLE_LABEL, canAnalyse, isInternal, plural } from "./format";
@@ -66,20 +67,7 @@ export default function App() {
 
   return (
     <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <a className="brand" href="#/">
-            <strong>Claims Onboarding</strong>
-            <span>Pilot with synthetic data</span>
-          </a>
-          <span className="spacer" />
-          <div className="whoami">
-            <b>{user.display_name}</b>
-            <div>{ROLE_LABEL[user.role]}</div>
-          </div>
-          <button className="btn small" onClick={signOut}>Sign out</button>
-        </div>
-      </header>
+      <TopBar user={user} route={route} onSignOut={signOut} />
       <main>
         {route.view === "dashboard" ? <Dashboard user={user} /> : <ClientView key={route.id} id={route.id} tab={route.tab} user={user} />}
         <p className="notice">
@@ -106,19 +94,26 @@ function ClientView({ id, tab, user }: { id: number; tab: Tab | null; user: User
   return (
     <div>
       <div className="client-head">
-        <div className="row between">
-          <div className="title">
-            <h1>{client.name}</h1>
-            <span className="code">{client.code}</span>
+        <Poster seed={client.code} label={glyph(client.code)} />
+        <a className="back" href="#/">← All clients</a>
+        <div className="row between" style={{ alignItems: "end" }}>
+          <div className="stack" style={{ gap: "0.7rem" }}>
+            <div className="title">
+              <h1>{client.name}</h1>
+              <span className="code">{client.code}</span>
+            </div>
+            <div className="meta">
+              <span className={client.readiness.open_blockers ? "bad" : passed === client.readiness.checks.length ? "good" : undefined}>
+                {client.readiness.stage}
+              </span>
+              <span>{passed} of {client.readiness.checks.length} readiness checks pass</span>
+              {client.readiness.open_blockers > 0 && <span className="bad">{plural(client.readiness.open_blockers, "open blocker exception")}</span>}
+              {client.readiness.open_warnings > 0 && <span>{plural(client.readiness.open_warnings, "open warning")}</span>}
+            </div>
           </div>
           {(canAnalyse(user.role) || user.role === "client_contact") && <Upload clientId={client.id} onDone={reload} />}
         </div>
         <StageTrack stage={client.readiness.stage} />
-        <p className="muted small">
-          {client.readiness.stage}. {passed} of {client.readiness.checks.length} readiness checks pass
-          {client.readiness.open_blockers > 0 && `; ${plural(client.readiness.open_blockers, "open blocker exception")}`}
-          {client.readiness.open_warnings > 0 && `; ${plural(client.readiness.open_warnings, "open warning")}`}.
-        </p>
       </div>
       <nav className="tabs" aria-label="Client steps">
         {tabs.map((t) => (
@@ -150,12 +145,45 @@ function Upload({ clientId, onDone }: { clientId: number; onDone: () => void }) 
   }
   return (
     <div className="stack" style={{ gap: "0.4rem", justifyItems: "end" }}>
-      <label className="btn primary">
-        {busy ? "Uploading…" : "Upload client file"}
+      <label className="btn primary big">
+        <span className="icon" aria-hidden="true">＋</span>{busy ? "Uploading…" : "Upload client file"}
         <input ref={input} type="file" accept=".csv,text/csv" className="visually-hidden" disabled={busy}
           onChange={(e) => void onPick(e.target.files?.[0])} />
       </label>
       {error ? <Message error={error} /> : note ? <Message done={note} /> : <span className="faint">CSV in UTF-8, up to 20 MB</span>}
     </div>
+  );
+}
+
+function TopBar({ user, route, onSignOut }: { user: User; route: Route; onSignOut: () => void }) {
+  const [solid, setSolid] = useState(false);
+  useEffect(() => {
+    const on = () => setSolid(window.scrollY > 24);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return (
+    <header className={`topbar${solid ? " solid" : ""}`}>
+      <div className="topbar-inner">
+        <a className="brand" href="#/">
+          <strong>Claims Onboarding</strong>
+          <span>Synthetic pilot</span>
+        </a>
+        <nav className="topnav" aria-label="Main">
+          <a href="#/" aria-current={route.view === "dashboard" ? "page" : undefined}>Home</a>
+          {route.view === "client" && <a href={`#/clients/${route.id}`} aria-current="page">Client</a>}
+        </nav>
+        <span className="spacer" />
+        <div className="profile">
+          <div className="whoami">
+            <b>{user.display_name}</b>
+            <div>{ROLE_LABEL[user.role]}</div>
+          </div>
+          <span className="avatar" style={avatarStyle(user.username)} aria-hidden="true">{user.display_name.charAt(0)}</span>
+          <button className="btn small" onClick={onSignOut}>Sign out</button>
+        </div>
+      </div>
+    </header>
   );
 }

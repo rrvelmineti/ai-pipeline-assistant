@@ -1,3 +1,11 @@
+# A dark, cinematic interface for the claims platform
+
+- Restyle every screen with a dark theme: black stage, one bold red for the brand and main actions, a condensed display face (Bebas Neue, bundled) for titles and figures. Status colours keep their meaning: red-orange blockers, amber warnings, green passed; the current stage is white, so red still means a problem.
+- Home: a billboard features the client that most needs a person (most open blockers, then waiting for approval), above a number strip and rows of client cards (Needs attention, In progress, Ready for go-live, Live) with arrow scrolling. The full client table stays below as "All clients".
+- Client pages open with a full-width header in the client's poster art; the sign-in page shows the card over a wall of poster art.
+- Poster art is drawn with CSS gradients from the client code, so there are no image files and the content security policy is unchanged.
+- Add `src/components/Poster.tsx` and `src/__tests__/dashboard.test.tsx` (featured-client choice and poster art). No API or behaviour changes.
+
 # Fix the demo load on Render
 
 - The container image now includes `examples/claims/` (the synthetic sample the demo loader reads); without it the first demo load on Render failed.

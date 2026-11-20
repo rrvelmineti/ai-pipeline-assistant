@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../api";
+import { Poster, glyph } from "../components/Poster";
 import { StageTrack } from "../components/StageTrack";
 import { Figure, Message, Panel, RunStatus, useAction, useLoad } from "../components/ui";
-import { canAnalyse, date, isInternal, n, pct, seconds } from "../format";
+import { canAnalyse, date, isInternal, n, pct, plural, seconds } from "../format";
 import type { ClientRow, Kpi, Metrics, Portfolio, User } from "../types";
 
 function kpiValue(k: Kpi) {
@@ -20,15 +21,21 @@ export function Dashboard({ user }: { user: User }) {
   const ready = rows.filter((c) => c.stage === "Ready for approval").length;
   const blockers = rows.reduce((s, c) => s + c.open_blockers, 0);
 
+  const featured = pickFeatured(rows);
+  const shelves = [
+    { title: "Needs attention", items: rows.filter((c) => c.stage === "Remediation" || c.open_blockers > 0) },
+    { title: "In progress", items: rows.filter((c) => ["Setup", "Mapping", "Validation"].includes(c.stage) && c.open_blockers === 0) },
+    { title: "Ready for go-live", items: rows.filter((c) => ["Ready for approval", "Approved"].includes(c.stage) && c.open_blockers === 0) },
+    { title: "Live", items: rows.filter((c) => c.stage === "Live" && c.open_blockers === 0) },
+  ].filter((s) => s.items.length > 0);
+
   return (
-    <div className="stack">
-      <div className="page-head">
-        <h1>Client onboarding</h1>
-        <p className="muted">Where every client stands on the way to go-live, and what is holding each one back.</p>
-      </div>
+    <div className="stack" style={{ gap: 0 }}>
+      <h1 className="visually-hidden">Client onboarding</h1>
+      {featured ? <Billboard client={featured} /> : <div style={{ height: "5rem" }} />}
 
       {rows.length > 0 && (
-        <div className="figures">
+        <div className="figures home-figures">
           <Figure value={n(rows.length)} what="Clients you can see" />
           <Figure value={n(ready)} what="Ready for approval" tone={ready ? "pass" : undefined} />
           <Figure value={n(rows.filter((c) => c.stage === "Live").length)} what="Live" />
@@ -36,13 +43,17 @@ export function Dashboard({ user }: { user: User }) {
         </div>
       )}
 
-      <Panel title="Clients" intro="Select a client to work on its mapping, exceptions, resubmissions and go-live.">
-        <Message error={clients.error} />
-        {rows.length === 0 && !clients.loading ? (
-          <div className="empty">
-            {canAnalyse(user.role) ? "No clients yet. Add the first one below." : "No clients have been shared with you yet."}
-          </div>
-        ) : (
+      <Message error={clients.error} />
+      {rows.length === 0 && !clients.loading && (
+        <div className="empty">
+          {canAnalyse(user.role) ? "No clients yet. Add the first one below." : "No clients have been shared with you yet."}
+        </div>
+      )}
+      {shelves.map((s) => <Shelf key={s.title} title={s.title} clients={s.items} />)}
+
+      <div className="stack">
+      {rows.length > 0 && (
+      <Panel title="All clients" intro="Every client as a list. Select a client to work on its mapping, exceptions, resubmissions and go-live.">
           <div className="table-wrap">
             <table>
               <thead>
@@ -81,8 +92,8 @@ export function Dashboard({ user }: { user: User }) {
               </tbody>
             </table>
           </div>
-        )}
       </Panel>
+      )}
 
       {canAnalyse(user.role) && <AddClient onAdded={clients.reload} />}
 
@@ -109,7 +120,110 @@ export function Dashboard({ user }: { user: User }) {
       )}
 
       {internal && metrics.data && <Processing m={metrics.data} />}
+      </div>
     </div>
+  );
+}
+
+// The billboard features the client that most needs a person: the most open blockers first, then
+// a client waiting for approval, then the earliest in progress.
+export function pickFeatured(rows: ClientRow[]): ClientRow | null {
+  if (rows.length === 0) return null;
+  const blocked = [...rows].filter((c) => c.open_blockers > 0).sort((a, b) => b.open_blockers - a.open_blockers);
+  if (blocked.length) return blocked[0];
+  const waiting = rows.find((c) => c.stage === "Ready for approval");
+  if (waiting) return waiting;
+  return rows.find((c) => c.stage !== "Live") ?? rows[0];
+}
+
+function lede(c: ClientRow): string {
+  if (c.open_blockers > 0) {
+    return `${plural(c.open_blockers, "blocker exception")} ${c.open_blockers === 1 ? "is" : "are"} holding this client back from go-live. Open the exceptions to see what the client needs to fix.`;
+  }
+  switch (c.stage) {
+    case "Ready for approval": return "Every readiness check passes. This client is waiting for a second person to approve go-live.";
+    case "Approved": return "Go-live is approved. The next step is the export to the claims system.";
+    case "Live": return "Live: approved claims have been loaded downstream, each one exactly once.";
+    case "Setup": return "A new client. The next step is the first file and its column mapping.";
+    case "Mapping": return "The column mapping is being confirmed before the first full validation.";
+    default: return `${c.checks_passed} of ${c.checks_total} readiness checks pass so far.`;
+  }
+}
+
+function Billboard({ client: c }: { client: ClientRow }) {
+  const label = c.open_blockers > 0 ? "Needs attention" : c.stage === "Ready for approval" ? "Waiting for approval" : "Featured client";
+  return (
+    <section className="hero" aria-label={`Featured client: ${c.name}`}>
+      <Poster seed={c.code} label={glyph(c.code)} />
+      <div className="hero-body">
+        <div className="eyebrow"><span className="tag brand">{label}</span><span>{c.code}</span></div>
+        <h2 className="hero-title">{c.name}</h2>
+        <div className="meta">
+          <span className={c.open_blockers ? "bad" : c.checks_passed === c.checks_total ? "good" : undefined}>
+            {c.checks_passed} of {c.checks_total} checks pass
+          </span>
+          <span className="pill">{c.stage}</span>
+          {c.open_blockers > 0 && <span className="bad">{plural(c.open_blockers, "blocker")}</span>}
+          {c.open_warnings > 0 && <span>{plural(c.open_warnings, "warning")}</span>}
+          {c.go_live_target && <span>Target {date(c.go_live_target)}</span>}
+        </div>
+        <p className="lede">{lede(c)}</p>
+        <StageTrack stage={c.stage} />
+        <div className="hero-actions">
+          <a className="btn light big" href={`#/clients/${c.id}`}><span className="icon" aria-hidden="true">▶</span>Open client</a>
+          <a className="btn big" href={`#/clients/${c.id}/validation`}><span className="icon" aria-hidden="true">ⓘ</span>Exceptions</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Shelf({ title, clients }: { title: string; clients: ClientRow[] }) {
+  const track = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: true, end: true });
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    const on = () => setEdges({ start: el.scrollLeft <= 4, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 });
+    on();
+    el.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    return () => { el.removeEventListener("scroll", on); window.removeEventListener("resize", on); };
+  }, [clients.length]);
+  const page = (dir: number) => track.current?.scrollBy({ left: dir * track.current.clientWidth * 0.85, behavior: "smooth" });
+  return (
+    <section className="shelf" aria-label={title}>
+      <div className="shelf-head"><h2>{title}</h2><span className="count">{plural(clients.length, "client")}</span></div>
+      <button className="shelf-arrow left" onClick={() => page(-1)} hidden={edges.start} aria-label={`Scroll ${title} left`}>‹</button>
+      <div className="shelf-track" ref={track}>
+        {clients.map((c) => <ClientCard key={c.id} c={c} />)}
+      </div>
+      <button className="shelf-arrow right" onClick={() => page(1)} hidden={edges.end} aria-label={`Scroll ${title} right`}>›</button>
+    </section>
+  );
+}
+
+function ClientCard({ c }: { c: ClientRow }) {
+  return (
+    <a className="card" href={`#/clients/${c.id}`}>
+      <Poster seed={c.code} label={glyph(c.code)}>
+        <div className="flag">
+          {c.open_blockers > 0 && <span className="tag blocker">{plural(c.open_blockers, "blocker")}</span>}
+          {c.open_warnings > 0 && <span className="tag warning">{plural(c.open_warnings, "warning")}</span>}
+          {c.open_blockers === 0 && ["Ready for approval", "Approved"].includes(c.stage) && <span className="tag pass">Ready</span>}
+          {c.stage === "Live" && <span className="tag light">Live</span>}
+        </div>
+        <div className="title">{c.name}</div>
+      </Poster>
+      <div className="info">
+        <StageTrack stage={c.stage} compact />
+        <div className="line"><b>{c.stage}</b><span>{c.checks_passed} of {c.checks_total} checks</span></div>
+        <div className="line">
+          <span>{c.latest_submission ? `File #${c.latest_submission}` : "No file yet"}</span>
+          <span>{c.go_live_target ? `Target ${date(c.go_live_target)}` : "No target date"}</span>
+        </div>
+      </div>
+    </a>
   );
 }
 
